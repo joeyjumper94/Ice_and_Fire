@@ -77,8 +77,10 @@ import net.minecraft.loot.LootTables;
 import net.minecraft.loot.RandomValueRange;
 import net.minecraft.loot.conditions.RandomChance;
 import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.ListNBT;
 import net.minecraft.particles.BlockParticleData;
 import net.minecraft.particles.ParticleTypes;
+import net.minecraft.potion.Effect;
 import net.minecraft.potion.EffectInstance;
 import net.minecraft.potion.Effects;
 import net.minecraft.tags.EntityTypeTags;
@@ -112,6 +114,7 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.village.VillagerTradesEvent;
 import net.minecraftforge.event.world.BlockEvent;
 import net.minecraftforge.eventbus.api.Event;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -907,5 +910,33 @@ public class ServerEvents {
         if (event.getType() == IafVillagerRegistry.SCRIBE) {
             IafVillagerRegistry.addScribeTrades(event.getTrades());
         }
+    }
+
+	@SubscribeEvent//(priority = EventPriority.HIGHEST)
+	public static void preventDeath(LivingDeathEvent event){
+//		IceAndFire.LOGGER.info("totem pop event");
+        LivingEntity entity = event.getEntityLiving();
+		if(entity instanceof EntityDragonBase){
+			IceAndFire.LOGGER.info("dragon popped totem");
+			ItemStack itemstack=((EntityDragonBase) entity).getItemStackFromSlot(EquipmentSlotType.MAINHAND);
+			if(!itemstack.isEmpty()){
+				IceAndFire.LOGGER.info("itemstack not empty");
+				if(itemstack.getItem() == Items.TOTEM_OF_UNDYING){
+					IceAndFire.LOGGER.info("itemstack is a totem");
+					itemstack.shrink(1);
+					entity.setHealth(((EntityDragonBase) entity).getMaxHealth()*0.5f);
+					entity.clearActivePotions();
+					entity.addPotionEffect(new EffectInstance(Effects.REGENERATION,900,4));
+					entity.addPotionEffect(new EffectInstance(Effects.ABSORPTION,900,255));
+					entity.addPotionEffect(new EffectInstance(Effects.FIRE_RESISTANCE,800,0));
+					entity.addPotionEffect(new EffectInstance(Effects.RESISTANCE,800,0));
+					event.setCanceled(true);
+				}
+			}else{
+				IceAndFire.LOGGER.info("itemstack=null");
+			}
+		}else{
+//			IceAndFire.LOGGER.info("totem pop by"+entity.getClass());
+		}
     }
 }

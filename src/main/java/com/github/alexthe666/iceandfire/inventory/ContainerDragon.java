@@ -11,13 +11,14 @@ import net.minecraft.inventory.container.Container;
 import net.minecraft.inventory.container.Slot;
 import net.minecraft.item.BannerItem;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 
 public class ContainerDragon extends Container {
     private IInventory dragonInventory;
     private EntityDragonBase dragon;
 
     public ContainerDragon(int i, PlayerInventory playerInventory) {
-        this(i, new Inventory(5), playerInventory, null);
+        this(i, new Inventory(6), playerInventory, null);
     }
 
     public ContainerDragon(int id, IInventory ratInventory, PlayerInventory playerInventory, EntityDragonBase rat) {
@@ -77,6 +78,21 @@ public class ContainerDragon extends Container {
                 return super.isItemValid(stack) && !stack.isEmpty() && stack.getItem() != null && stack.getItem() instanceof ItemDragonArmor && ((ItemDragonArmor) stack.getItem()).dragonSlot == 3;
             }
         });
+        this.addSlot(new Slot(ratInventory, 5, 153, 54) {
+            public void onSlotChanged() {
+                this.inventory.markDirty();
+            }
+            @Override
+            public boolean isItemValid(ItemStack stack) {
+				if( super.isItemValid(stack) && !stack.isEmpty() && stack.getItem() != null ){
+					if (stack.getItem() == Items.TOTEM_OF_UNDYING){
+						return true;
+					}
+				}
+                return false;
+            }
+
+        });
         int j;
         int k;
         for (j = 0; j < 3; ++j) {
@@ -126,11 +142,15 @@ public class ContainerDragon extends Container {
                     return ItemStack.EMPTY;
                 }
 
+            } else if (this.getSlot(5).isItemValid(itemstack1) && !this.getSlot(5).getHasStack()) {
+                if (!this.mergeItemStack(itemstack1, 5, 6, false)) {
+                    return ItemStack.EMPTY;
+                }
             } else if (this.getSlot(0).isItemValid(itemstack1)) {
                 if (!this.mergeItemStack(itemstack1, 0, 1, false)) {
                     return ItemStack.EMPTY;
                 }
-            } else if (this.dragonInventory.getSizeInventory() <= 5 || !this.mergeItemStack(itemstack1, 5, this.dragonInventory.getSizeInventory(), false)) {
+            } else if (this.dragonInventory.getSizeInventory() <= 6 || !this.mergeItemStack(itemstack1, 6, this.dragonInventory.getSizeInventory(), false)) {
                 return ItemStack.EMPTY;
             }
             if (itemstack1.isEmpty()) {

@@ -107,6 +107,7 @@ public abstract class EntityDragonBase extends TameableEntity implements IPassab
     private static final DataParameter<Float> DRAGON_PITCH = EntityDataManager.createKey(EntityDragonBase.class, DataSerializers.FLOAT);
     private static final DataParameter<Boolean> CRYSTAL_BOUND = EntityDataManager.createKey(EntityDragonBase.class, DataSerializers.BOOLEAN);
     private static final DataParameter<String> CUSTOM_POSE = EntityDataManager.createKey(EntityDragonBase.class, DataSerializers.STRING);
+    private static final DataParameter<Integer> TAMEPROGRESS = EntityDataManager.createKey(EntityDragonBase.class, DataSerializers.VARINT);
     public static Animation ANIMATION_FIRECHARGE;
     public static Animation ANIMATION_EAT;
     public static Animation ANIMATION_SPEAK;
@@ -621,6 +622,7 @@ public abstract class EntityDragonBase extends TameableEntity implements IPassab
         this.dataManager.register(DRAGON_PITCH, Float.valueOf(0));
         this.dataManager.register(CRYSTAL_BOUND, Boolean.valueOf(false));
         this.dataManager.register(CUSTOM_POSE, "");
+        this.dataManager.register(TAMEPROGRESS, Integer.valueOf(0));
     }
 
     public boolean isGoingUp() {
@@ -718,6 +720,11 @@ public abstract class EntityDragonBase extends TameableEntity implements IPassab
         compound.putInt("Variant", this.getVariant());
         compound.putBoolean("Sleeping", this.isSleeping());
         compound.putBoolean("TamedDragon", this.isTamed());
+        if(this.isTamed()){
+            compound.putInt("TameProgress",100);
+        }else{
+            compound.putInt("TameProgress",this.getTameProgress());
+        }
         compound.putBoolean("FireBreathing", this.isBreathingFire());
         compound.putBoolean("AttackDecision", usingGroundAttack);
         compound.putBoolean("Hovering", this.isHovering());
@@ -763,6 +770,11 @@ public abstract class EntityDragonBase extends TameableEntity implements IPassab
         this.setVariant(compound.getInt("Variant"));
         this.setQueuedToSit(compound.getBoolean("Sleeping"));
         this.setTamed(compound.getBoolean("TamedDragon"));
+        if(this.isTamed()){
+            this.setTameProgress(100);
+        }else{
+            this.setTameProgress(compound.getInt("TameProgress"));
+        }
         this.setBreathingFire(compound.getBoolean("FireBreathing"));
         this.usingGroundAttack = compound.getBoolean("AttackDecision");
         this.setHovering(compound.getBoolean("Hovering"));
@@ -784,7 +796,7 @@ public abstract class EntityDragonBase extends TameableEntity implements IPassab
             for (int i = 0; i < nbttaglist.size(); ++i) {
                 CompoundNBT CompoundNBT = (net.minecraft.nbt.CompoundNBT) nbttaglist.get(i);
                 int j = CompoundNBT.getByte("Slot") & 255;
-                if (j <= 4) {
+                if (j <= 5) {
                     dragonInventory.setInventorySlotContents(j, ItemStack.read(CompoundNBT));
                 }
             }
@@ -804,7 +816,7 @@ public abstract class EntityDragonBase extends TameableEntity implements IPassab
     }
 
     private void initInventory() {
-        dragonInventory = new Inventory(5);
+        dragonInventory = new Inventory(6);
         if (dragonInventory != null) {
             for (int j = 0; j < dragonInventory.getSizeInventory(); ++j) {
                 ItemStack itemstack = dragonInventory.getStackInSlot(j);
@@ -868,6 +880,12 @@ public abstract class EntityDragonBase extends TameableEntity implements IPassab
 
     public void setHunger(int hunger) {
         this.dataManager.set(HUNGER, MathHelper.clamp(hunger, 0, 100));
+    }
+    public void setTameProgress(int TameProgress) {
+        this.dataManager.set(TAMEPROGRESS, MathHelper.clamp(TameProgress, 0, 100));
+    }
+    public int getTameProgress(){
+        return this.dataManager.get(TAMEPROGRESS).intValue();
     }
 
     public int getVariant() {
@@ -1236,6 +1254,46 @@ public abstract class EntityDragonBase extends TameableEntity implements IPassab
                             return ActionResultType.SUCCESS;
                         }
                     }
+                }
+            } else if (!this.isTamed() && this.isChild()) {
+                int itemFoodAmount = FoodUtils.getFoodPoints(stack, true, dragonType.isPiscivore());
+                if (itemFoodAmount > 0) {
+                    this.setHunger(this.getHunger() + itemFoodAmount);
+                    int TameProgress=this.getTameProgress() + itemFoodAmount / 10;
+                    this.setTameProgress(TameProgress);
+                    if( TameProgress >= 100 ){
+                        this.setTamed(true);
+                        this.setTamedBy(player);
+                    }
+                    
+                    this.setHealth(Math.min(this.getMaxHealth(), (int) (this.getHealth() + (itemFoodAmount / 10))));
+                    this.playSound(SoundEvents.ENTITY_GENERIC_EAT, this.getSoundVolume(), this.getSoundPitch());
+                    this.spawnItemCrackParticles(stack.getItem());
+                    this.eatFoodBonus(stack);
+                    if (!player.isCreative()) {
+                        stack.shrink(1);
+                    }
+                    return ActionResultType.SUCCESS;
+                }
+                if (stack.getItem() == IafItemRegistry.DRAGON_MEAL) {
+                    this.growDragon(1);
+                    this.setHunger(this.getHunger() + 20);
+                    int TameProgress=this.getTameProgress() + 20;
+                    this.setTameProgress(TameProgress);
+                    if( TameProgress >= 100 ){
+                        this.setTamed(true);
+                        this.setTamedBy(player);
+                    }
+                    this.heal(Math.min(this.getHealth(), (int) (this.getMaxHealth() / 2)));
+                    this.playSound(SoundEvents.ENTITY_GENERIC_EAT, this.getSoundVolume(), this.getSoundPitch());
+                    this.spawnItemCrackParticles(stack.getItem());
+                    this.spawnItemCrackParticles(Items.BONE);
+                    this.spawnItemCrackParticles(Items.BONE_MEAL);
+                    this.eatFoodBonus(stack);
+                    if (!player.isCreative()) {
+                        stack.shrink(1);
+                    }
+                    return ActionResultType.SUCCESS;
                 }
             }
         }
@@ -1968,10 +2026,10 @@ public abstract class EntityDragonBase extends TameableEntity implements IPassab
     }
 
     public void onDeath(DamageSource cause) {
-        if (cause.getTrueSource() != null) {
-            //if (cause.getTrueSource() instanceof PlayerEntity) {
-            //	((PlayerEntity) cause.getTrueSource()).addStat(ModAchievements.dragonSlayer, 1);
-            //}
+        if (cause.getTrueSource() != null) {/*
+            if (cause.getTrueSource() instanceof PlayerEntity) {
+                ((PlayerEntity) cause.getTrueSource()).addStat(ModAchievements.dragonSlayer, 1);
+            }*/
         }
         super.onDeath(cause);
     }
@@ -2295,6 +2353,8 @@ public abstract class EntityDragonBase extends TameableEntity implements IPassab
             return dragonInventory.getStackInSlot(3);
         } else if (slotIn == EquipmentSlotType.FEET) {
             return dragonInventory.getStackInSlot(4);
+        } else if (slotIn == EquipmentSlotType.MAINHAND) {
+            return dragonInventory.getStackInSlot(5);
         }
         return super.getItemStackFromSlot(slotIn);
     }
@@ -2310,6 +2370,8 @@ public abstract class EntityDragonBase extends TameableEntity implements IPassab
             dragonInventory.setInventorySlotContents(3, stack);
         } else if (slotIn == EquipmentSlotType.FEET) {
             dragonInventory.setInventorySlotContents(4, stack);
+        } else if (slotIn == EquipmentSlotType.MAINHAND) {
+            dragonInventory.setInventorySlotContents(5, stack);
         } else {
             super.getItemStackFromSlot(slotIn);
         }

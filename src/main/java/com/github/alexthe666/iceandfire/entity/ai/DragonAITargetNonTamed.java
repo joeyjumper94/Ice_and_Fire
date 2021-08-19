@@ -27,7 +27,7 @@ public class DragonAITargetNonTamed<T extends LivingEntity> extends NearestAttac
         if(!dragon.isTamed() && dragon.lookingForRoostAIFlag){
             return false;
         }
-        return !dragon.isTamed() && !dragon.isSleeping() && super.shouldExecute();
+        return !dragon.isChild() && !dragon.isTamed() && !dragon.isSleeping() && super.shouldExecute();
     }
 
     protected AxisAlignedBB getTargetableArea(double targetDistance) {

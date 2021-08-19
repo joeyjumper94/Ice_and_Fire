@@ -49,7 +49,7 @@ public class DragonAITarget<T extends LivingEntity> extends NearestAttackableTar
                 if (nearestTarget instanceof PlayerEntity && dragon.isTamed()) {
                     return false;
                 } else {
-                    if (!dragon.isOwner(nearestTarget) && FoodUtils.getFoodPoints(nearestTarget) > 0 && dragon.canMove() && (dragon.getHunger() < 90 || !dragon.isTamed() && nearestTarget instanceof PlayerEntity)) {
+                    if (!dragon.isOwner(nearestTarget) && FoodUtils.getFoodPoints(nearestTarget) > 0 && dragon.canMove() && (dragon.getHunger() < 90 || !dragon.isChild() && !dragon.isTamed() && nearestTarget instanceof PlayerEntity)) {
                         if (dragon.isTamed()) {
                             return DragonUtils.canTameDragonAttack(dragon, nearestTarget);
                         } else {
