@@ -1279,11 +1279,13 @@ public abstract class EntityDragonBase extends TameableEntity implements IPassab
                     this.growDragon(1);
                     this.setHunger(this.getHunger() + 20);
                     int TameProgress=this.getTameProgress() + 20;
-                    this.setTameProgress(TameProgress);
-                    if( TameProgress >= 100 ){
+                    if(TameProgress>=100||!this.isChild()){
                         this.setTamed(true);
                         this.setTamedBy(player);
-                    }
+						this.setTameProgress(100);
+                    }else{
+						this.setTameProgress(TameProgress);
+					}
                     this.heal(Math.min(this.getHealth(), (int) (this.getMaxHealth() / 2)));
                     this.playSound(SoundEvents.ENTITY_GENERIC_EAT, this.getSoundVolume(), this.getSoundPitch());
                     this.spawnItemCrackParticles(stack.getItem());
