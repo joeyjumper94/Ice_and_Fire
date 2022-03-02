@@ -256,7 +256,7 @@ public class EntityDeathWorm extends TameableEntity implements ISyncMount, ICust
         super.writeAdditional(compound);
         compound.putInt("Variant", this.getVariant());
         compound.putInt("GrowthCounter", this.growthCounter);
-        compound.putFloat("Scale", this.getScale());
+        compound.putFloat("Scale", this.getDeathwormScale());
         compound.putInt("WormAge", this.getWormAge());
         compound.putLong("WormHome", this.getWormHome().toLong());
         compound.putBoolean("WillExplode", this.willExplode);
@@ -324,12 +324,12 @@ public class EntityDeathWorm extends TameableEntity implements ISyncMount, ICust
         this.dataManager.set(WORM_AGE, Integer.valueOf(age));
     }
 
-    public float getScale() {
-        return Float.valueOf(this.dataManager.get(SCALE).floatValue());
+    public float getRenderScale() {
+        return Math.min(this.getDeathwormScale() * (this.getWormAge() / 5F), 7F);
     }
 
-    public float getRenderScale() {
-        return Math.min(this.getScale() * (this.getWormAge() / 5F), 7F);
+    public float getDeathwormScale() {
+        return Float.valueOf(this.dataManager.get(SCALE).floatValue());
     }
 
     public void setDeathWormScale(float scale) {
@@ -518,7 +518,7 @@ public class EntityDeathWorm extends TameableEntity implements ISyncMount, ICust
             this.setWormAge(Math.min(5, this.getWormAge() + 1));
             this.clearSegments();
             this.heal(15);
-            this.setDeathWormScale(this.getScale());
+            this.setDeathWormScale(this.getDeathwormScale());
             if (world.isRemote) {
                 for (int i = 0; i < 10 * this.getRenderScale(); i++) {
                     this.world.addParticle(ParticleTypes.HAPPY_VILLAGER, this.getPosX() + (double) (this.rand.nextFloat() * this.getWidth() * 2.0F) - (double) this.getWidth(), this.getSurface((int) Math.floor(this.getPosX()), (int) Math.floor(this.getPosY()), (int) Math.floor(this.getPosZ())) + 0.5F, this.getPosZ() + (double) (this.rand.nextFloat() * this.getWidth() * 2.0F) - (double) this.getWidth(), this.rand.nextGaussian() * 0.02D, this.rand.nextGaussian() * 0.02D, this.rand.nextGaussian() * 0.02D);
@@ -532,11 +532,6 @@ public class EntityDeathWorm extends TameableEntity implements ISyncMount, ICust
         }
         if (this.getWormAge() < 5) {
             growthCounter++;
-        }
-        if (this.getControllingPassenger() != null) {
-            if (this.isEntityInsideOpaqueBlock()) {
-                this.setMotion(this.getMotion().add(0, 0.4F, 0));
-            }
         }
         if (this.getControllingPassenger() != null && this.getAttackTarget() != null) {
             this.getNavigator().clearPath();
@@ -618,9 +613,7 @@ public class EntityDeathWorm extends TameableEntity implements ISyncMount, ICust
                 target.attackEntityFrom(DamageSource.causeMobDamage(this), ((int) this.getAttribute(Attributes.ATTACK_DAMAGE).getValue()));
             }
         }
-        if (!this.isInSand()) {
-
-        } else {
+        if (this.isInSand()) {
             BlockPos pos = new BlockPos(this.getPosX(), this.getSurface((int) Math.floor(this.getPosX()), (int) Math.floor(this.getPosY()), (int) Math.floor(this.getPosZ())), this.getPosZ()).down();
             BlockState state = world.getBlockState(pos);
             if (state.isOpaqueCube(world, pos)) {
@@ -635,7 +628,7 @@ public class EntityDeathWorm extends TameableEntity implements ISyncMount, ICust
         if (this.up() && this.onGround) {
             this.jump();
         }
-        boolean inSand = isInSand();
+        boolean inSand = isInSand() || this.getControllingPassenger() == null;
         if (inSand && !this.isSandNavigator) {
             switchNavigator(true);
         }
@@ -644,9 +637,6 @@ public class EntityDeathWorm extends TameableEntity implements ISyncMount, ICust
         }
         if (world.isRemote) {
             tail_buffer.calculateChainSwingBuffer(90, 20, 5F, this);
-        }
-        if (this.getControllingPassenger() != null) {
-            this.pushOutOfBlocks(this.getPosX(), (this.getBoundingBox().minY + this.getBoundingBox().maxY) / 2.0D, this.getPosZ());
         }
         if (world.isRemote) {
             this.updateClientControls();
@@ -751,6 +741,7 @@ public class EntityDeathWorm extends TameableEntity implements ISyncMount, ICust
         return 10;
     }
 
+
     @Override
     public boolean canPassengerSteer() {
         return false;
@@ -760,7 +751,6 @@ public class EntityDeathWorm extends TameableEntity implements ISyncMount, ICust
     public boolean canBeSteered() {
         return true;
     }
-
 
     @Override
     public void travel(Vector3d vec) {
@@ -805,7 +795,11 @@ public class EntityDeathWorm extends TameableEntity implements ISyncMount, ICust
 
     @Override
     public double getRideSpeedModifier() {
-        return 1;
+        return isInSand() ? 1.5F : 1F;
+    }
+
+    public double processRiderY(double y) {
+        return this.isInSand() ? y + 0.2F : y;
     }
 
     public class SandMoveHelper extends MovementController {
