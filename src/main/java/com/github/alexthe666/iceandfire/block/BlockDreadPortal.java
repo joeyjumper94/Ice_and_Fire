@@ -1,14 +1,10 @@
 package com.github.alexthe666.iceandfire.block;
 
-import java.util.Random;
-
-import javax.annotation.Nullable;
-
 import com.github.alexthe666.iceandfire.IceAndFire;
 import com.github.alexthe666.iceandfire.entity.tile.TileEntityDreadPortal;
 import com.github.alexthe666.iceandfire.entity.util.DragonUtils;
+import com.github.alexthe666.iceandfire.enums.EnumParticles;
 import com.github.alexthe666.iceandfire.item.ICustomRendered;
-
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
@@ -19,20 +15,20 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.IBlockReader;
 import net.minecraft.world.World;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.common.ToolType;
 
-import net.minecraft.block.AbstractBlock.Properties;
+import javax.annotation.Nullable;
+import java.util.Random;
+
 
 public class BlockDreadPortal extends ContainerBlock implements IDreadBlock, ICustomRendered {
 
     public BlockDreadPortal() {
         super(
-    		Properties
-    			.create(Material.PORTAL)
-    			.variableOpacity()
-    			.hardnessAndResistance(-1, 100000)
+            Properties
+                .create(Material.PORTAL)
+                .variableOpacity()
+                .hardnessAndResistance(-1, 100000)
     			.harvestTool(ToolType.PICKAXE)
     			.setLightLevel((state) -> { return 1; })
     			.tickRandomly()
@@ -98,7 +94,7 @@ public class BlockDreadPortal extends ContainerBlock implements IDreadBlock, ICu
         return 0;
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Override
     public void animateTick(BlockState stateIn, World worldIn, BlockPos pos, Random rand) {
         TileEntity tileentity = worldIn.getTileEntity(pos);
 
@@ -112,7 +108,7 @@ public class BlockDreadPortal extends ContainerBlock implements IDreadBlock, ICu
                 double d4 = ((double) rand.nextFloat()) * -0.25D;
                 double d5 = ((double) rand.nextFloat() - 0.5D) * 0.25D;
                 int k = rand.nextInt(2) * 2 - 1;
-                IceAndFire.PROXY.spawnParticle("dread_portal", d0, d1, d2, d3, d4, d5);
+                IceAndFire.PROXY.spawnParticle(EnumParticles.Dread_Portal, d0, d1, d2, d3, d4, d5);
                 //worldIn.spawnParticle(ParticleTypes.END_ROD, d0, d1, d2, d3, d4, d5);
             }
         }
@@ -126,6 +122,7 @@ public class BlockDreadPortal extends ContainerBlock implements IDreadBlock, ICu
         return false;
     }
 
+    @Override
     public BlockRenderType getRenderType(BlockState state) {
         return BlockRenderType.ENTITYBLOCK_ANIMATED;
     }

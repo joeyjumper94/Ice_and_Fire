@@ -67,7 +67,7 @@ public class TileEntityLectern extends LockableTileEntity implements ITickableTi
     private NonNullList<ItemStack> stacks = NonNullList.withSize(3, ItemStack.EMPTY);
 
     public TileEntityLectern() {
-        super(IafTileEntityRegistry.IAF_LECTERN);
+        super(IafTileEntityRegistry.IAF_LECTERN.get());
     }
 
     @Override
@@ -94,36 +94,10 @@ public class TileEntityLectern extends LockableTileEntity implements ITickableTi
         return this.stacks.get(index);
     }
 
-    private boolean canAddPage() {
-        if (this.stacks.get(0).isEmpty()) {
-            return false;
-        } else {
-            ItemStack itemstack = this.stacks.get(0).copy();
-
-            if (itemstack.isEmpty()) {
-                return false;
-            }
-            if (itemstack.getItem() != IafItemRegistry.BESTIARY) {
-                return false;
-            }
-
-            if (itemstack.getItem() == IafItemRegistry.BESTIARY) {
-                List list = EnumBestiaryPages.possiblePages(itemstack);
-                if (list == null || list.isEmpty()) {
-                    return false;
-                }
-            }
-            if (this.stacks.get(2).isEmpty())
-                return true;
-            int result = stacks.get(2).getCount() + itemstack.getCount();
-            return result <= getInventoryStackLimit() && result <= this.stacks.get(2).getMaxStackSize();
-        }
-    }
-
-    private ArrayList<EnumBestiaryPages> getPossiblePages() {
-        List list = EnumBestiaryPages.possiblePages(this.stacks.get(0));
+    private List<EnumBestiaryPages> getPossiblePages() {
+        final List<EnumBestiaryPages> list = EnumBestiaryPages.possiblePages(this.stacks.get(0));
         if (list != null && !list.isEmpty()) {
-            return (ArrayList<EnumBestiaryPages>) list;
+            return list;
         }
         return EMPTY_LIST;
     }
@@ -181,7 +155,7 @@ public class TileEntityLectern extends LockableTileEntity implements ITickableTi
                 List<EnumBestiaryPages> possibleList = getPossiblePages();
                 localRand.setSeed(this.world.getGameTime());
                 Collections.shuffle(possibleList, localRand);
-                if (possibleList.size() > 0) {
+                if (!possibleList.isEmpty()) {
                     selectedPages[0] = possibleList.get(0);
                 } else {
                     selectedPages[0] = null;
@@ -248,6 +222,7 @@ public class TileEntityLectern extends LockableTileEntity implements ITickableTi
         this.stacks.clear();
     }
 
+    @Override
     public ITextComponent getName() {
         return new TranslationTextComponent("block.iceandfire.lectern");
     }
@@ -272,8 +247,8 @@ public class TileEntityLectern extends LockableTileEntity implements ITickableTi
         return this.isItemValidForSlot(index, itemStackIn);
     }
 
-    public String getGuiID() {
-        return "iceandfire:lectern";
+    public static String getGuiID() {
+        return IceAndFire.MODID + ":lectern";
     }
 
     @Override
@@ -291,6 +266,7 @@ public class TileEntityLectern extends LockableTileEntity implements ITickableTi
         read(this.getBlockState(), packet.getNbtCompound());
     }
 
+    @Override
     public CompoundNBT getUpdateTag() {
         return this.write(new CompoundNBT());
     }

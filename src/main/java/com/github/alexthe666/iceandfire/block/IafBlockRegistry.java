@@ -1,18 +1,11 @@
 package com.github.alexthe666.iceandfire.block;
 
-import java.lang.reflect.Field;
-
 import com.github.alexthe666.iceandfire.IceAndFire;
 import com.github.alexthe666.iceandfire.enums.EnumDragonEgg;
 import com.github.alexthe666.iceandfire.enums.EnumSeaSerpent;
 import com.github.alexthe666.iceandfire.item.ICustomRendered;
 import com.github.alexthe666.iceandfire.misc.IafSoundRegistry;
-
-import net.minecraft.block.Block;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.SlabBlock;
-import net.minecraft.block.SoundType;
-import net.minecraft.block.WallTorchBlock;
+import net.minecraft.block.*;
 import net.minecraft.block.material.Material;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
@@ -21,7 +14,7 @@ import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-import net.minecraft.block.AbstractBlock;
+import java.lang.reflect.Field;
 
 @Mod.EventBusSubscriber(modid = IceAndFire.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class IafBlockRegistry {
@@ -139,7 +132,7 @@ public class IafBlockRegistry {
     public static final Block DREAD_TORCH = new BlockDreadTorch();
     public static final Block DREAD_TORCH_WALL = new BlockDreadTorchWall();
     public static final Block DREAD_STONE_BRICKS_STAIRS = new BlockGenericStairs(DREAD_STONE_BRICKS.getDefaultState(), "dread_stone_stairs");
-    public static final Block DREAD_STONE_BRICKS_SLAB = new SlabBlock(AbstractBlock.Properties.create(Material.ROCK).hardnessAndResistance(10F, 10000F)).setRegistryName("iceandfire:dread_stone_slab");
+    public static final Block DREAD_STONE_BRICKS_SLAB = new SlabBlock(AbstractBlock.Properties.create(Material.ROCK).hardnessAndResistance(10F, 10000F)).setRegistryName(IceAndFire.MODID, "dread_stone_slab");
     public static final Block DREADWOOD_LOG = new BlockDreadWoodLog();
     public static final BlockDreadBase DREADWOOD_PLANKS = new BlockDreadBase(Material.WOOD, "dreadwood_planks", "axe", 3, -1.0F, 100000.0F, SoundType.WOOD);
     public static final Block DREADWOOD_PLANKS_LOCK = new BlockDreadWoodLock();
@@ -153,7 +146,7 @@ public class IafBlockRegistry {
     @SubscribeEvent
     public static void registerBlocks(RegistryEvent.Register<Block> event) {
         try {
-            for (Field f : IafBlockRegistry.class.getDeclaredFields()) {
+            for (Field f : IafBlockRegistry.class.getFields()) {
                 Object obj = f.get(null);
                 if (obj instanceof Block) {
                     event.getRegistry().register((Block) obj);
@@ -175,14 +168,14 @@ public class IafBlockRegistry {
     public static void registerBlockItems(RegistryEvent.Register<Item> event) {
         // ItemBlocks
         try {
-            for (Field f : IafBlockRegistry.class.getDeclaredFields()) {
+            for (Field f : IafBlockRegistry.class.getFields()) {
                 Object obj = f.get(null);
                 if (obj instanceof Block && !(obj instanceof WallTorchBlock)) {
                     Item.Properties props = new Item.Properties();
                     if (obj instanceof ICustomRendered) {
                         props = IceAndFire.PROXY.setupISTER(props);
                     }
-                    if(!(obj instanceof INoTab) || ((INoTab) obj).shouldBeInTab()){
+                    if (!(obj instanceof INoTab) || ((INoTab) obj).shouldBeInTab()) {
                         props.group(IceAndFire.TAB_BLOCKS);
                     }
                     BlockItem itemBlock;

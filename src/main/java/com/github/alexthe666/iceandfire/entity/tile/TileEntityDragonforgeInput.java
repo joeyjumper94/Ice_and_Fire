@@ -26,7 +26,7 @@ public class TileEntityDragonforgeInput extends TileEntity implements ITickableT
     private TileEntityDragonforge core = null;
 
     public TileEntityDragonforgeInput() {
-        super(IafTileEntityRegistry.DRAGONFORGE_INPUT);
+        super(IafTileEntityRegistry.DRAGONFORGE_INPUT.get());
     }
 
     public void onHitWithFlame() {
@@ -51,7 +51,8 @@ public class TileEntityDragonforgeInput extends TileEntity implements ITickableT
                 world.setTileEntity(pos, tileentity);
             }
         }
-        lureDragons();
+        if (isAssembled())
+            lureDragons();
 
     }
 
@@ -65,6 +66,7 @@ public class TileEntityDragonforgeInput extends TileEntity implements ITickableT
         read(this.getBlockState(), packet.getNbtCompound());
     }
 
+    @Override
     public CompoundNBT getUpdateTag() {
         return this.write(new CompoundNBT());
     }
@@ -87,14 +89,7 @@ public class TileEntityDragonforgeInput extends TileEntity implements ITickableT
 
         boolean dragonSelected = false;
         for (EntityDragonBase dragon : world.getEntitiesWithinAABB(EntityDragonBase.class, searchArea)) {
-            if (
-                !dragonSelected &&
-
-                // Forge Core Checks
-                core != null &&
-                core.assembled() &&
-                core.canSmelt() &&
-
+            if (!dragonSelected &&
                 // Dragon Checks
                 getDragonType() == DragonType.getIntFromType(dragon.dragonType) &&
                 (dragon.isChained() || dragon.isTamed()) &&
@@ -110,6 +105,12 @@ public class TileEntityDragonforgeInput extends TileEntity implements ITickableT
         }
     }
 
+    public boolean isAssembled() {
+        return (core != null &&
+            core.assembled() &&
+            core.canSmelt());
+    }
+
     public void resetCore() {
         core = null;
     }
@@ -118,8 +119,8 @@ public class TileEntityDragonforgeInput extends TileEntity implements ITickableT
         if (target != null) {
             RayTraceResult rayTrace = this.world.rayTraceBlocks(new RayTraceContext(dragon.getHeadPosition(), target, RayTraceContext.BlockMode.COLLIDER, RayTraceContext.FluidMode.NONE, dragon));
             if (rayTrace != null && rayTrace.getHitVec() != null) {
-                double distance = target.distanceTo(rayTrace.getHitVec());
-                return distance < 1.0F;
+                double distance = dragon.getHeadPosition().distanceTo(rayTrace.getHitVec());
+                return distance < 10.0F + dragon.getWidth();
             }
         }
         return false;
@@ -133,19 +134,20 @@ public class TileEntityDragonforgeInput extends TileEntity implements ITickableT
                 return IafBlockRegistry.DRAGONFORGE_ICE_INPUT.getDefaultState().with(BlockDragonforgeInput.ACTIVE, false);
             case 2:
                 return IafBlockRegistry.DRAGONFORGE_LIGHTNING_INPUT.getDefaultState().with(BlockDragonforgeInput.ACTIVE, false);
-
+            default:
+                return IafBlockRegistry.DRAGONFORGE_FIRE_INPUT.getDefaultState().with(BlockDragonforgeInput.ACTIVE,
+                    false);
         }
-        return IafBlockRegistry.DRAGONFORGE_FIRE_INPUT.getDefaultState().with(BlockDragonforgeInput.ACTIVE, false);
     }
 
     private int getDragonType() {
-        if(world.getBlockState(pos).getBlock() == IafBlockRegistry.DRAGONFORGE_FIRE_INPUT){
+        if (world.getBlockState(pos).getBlock() == IafBlockRegistry.DRAGONFORGE_FIRE_INPUT) {
             return 0;
         }
-        if(world.getBlockState(pos).getBlock() == IafBlockRegistry.DRAGONFORGE_ICE_INPUT){
+        if (world.getBlockState(pos).getBlock() == IafBlockRegistry.DRAGONFORGE_ICE_INPUT) {
             return 1;
         }
-        if(world.getBlockState(pos).getBlock() == IafBlockRegistry.DRAGONFORGE_LIGHTNING_INPUT){
+        if (world.getBlockState(pos).getBlock() == IafBlockRegistry.DRAGONFORGE_LIGHTNING_INPUT) {
             return 2;
         }
         return 0;
@@ -155,29 +157,16 @@ public class TileEntityDragonforgeInput extends TileEntity implements ITickableT
         return world.getBlockState(pos).getBlock() instanceof BlockDragonforgeInput && world.getBlockState(pos).get(BlockDragonforgeInput.ACTIVE);
     }
 
-    private void setActive() {
-        TileEntity tileentity = world.getTileEntity(pos);
-        world.setBlockState(this.pos, getDeactivatedState().with(BlockDragonforgeInput.ACTIVE, true));
-        if (tileentity != null) {
-            tileentity.validate();
-            world.setTileEntity(pos, tileentity);
-        }
-    }
-
-
     private TileEntityDragonforge getConnectedTileEntity() {
         for (Direction facing : HORIZONTALS) {
-            if (world.getTileEntity(pos.offset(facing)) != null && world.getTileEntity(pos.offset(facing)) instanceof TileEntityDragonforge) {
+            if (world.getTileEntity(pos.offset(facing)) instanceof TileEntityDragonforge) {
                 return (TileEntityDragonforge) world.getTileEntity(pos.offset(facing));
             }
         }
         return null;
     }
-
-
-    @SuppressWarnings("unchecked")
     @Override
-    @javax.annotation.Nullable
+    @javax.annotation.Nonnull
     public <T> net.minecraftforge.common.util.LazyOptional<T> getCapability(net.minecraftforge.common.capabilities.Capability<T> capability, @Nullable Direction facing) {
         if (core != null && capability == net.minecraftforge.items.CapabilityItemHandler.ITEM_HANDLER_CAPABILITY) {
             return core.getCapability(capability, facing);

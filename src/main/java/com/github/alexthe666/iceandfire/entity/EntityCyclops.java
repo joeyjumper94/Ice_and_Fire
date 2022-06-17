@@ -1,7 +1,5 @@
 package com.github.alexthe666.iceandfire.entity;
 
-import javax.annotation.Nullable;
-
 import com.github.alexthe666.citadel.animation.Animation;
 import com.github.alexthe666.citadel.animation.AnimationHandler;
 import com.github.alexthe666.citadel.animation.IAnimatedEntity;
@@ -9,39 +7,18 @@ import com.github.alexthe666.iceandfire.IafConfig;
 import com.github.alexthe666.iceandfire.api.event.GenericGriefEvent;
 import com.github.alexthe666.iceandfire.entity.ai.CyclopsAIAttackMelee;
 import com.github.alexthe666.iceandfire.entity.ai.CyclopsAITargetSheepPlayers;
-import com.github.alexthe666.iceandfire.entity.util.DragonUtils;
-import com.github.alexthe666.iceandfire.entity.util.IBlacklistedFromStatues;
-import com.github.alexthe666.iceandfire.entity.util.IHumanoid;
-import com.github.alexthe666.iceandfire.entity.util.IVillagerFear;
+import com.github.alexthe666.iceandfire.entity.util.*;
 import com.github.alexthe666.iceandfire.event.ServerEvents;
 import com.github.alexthe666.iceandfire.misc.IafSoundRegistry;
 import com.github.alexthe666.iceandfire.misc.IafTagRegistry;
 import com.github.alexthe666.iceandfire.pathfinding.PathNavigateCyclops;
 import com.google.common.base.Predicate;
-
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
-import net.minecraft.block.BushBlock;
-import net.minecraft.block.LeavesBlock;
+import net.minecraft.block.*;
 import net.minecraft.block.material.Material;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.ILivingEntityData;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.MobEntity;
-import net.minecraft.entity.SpawnReason;
+import net.minecraft.entity.*;
 import net.minecraft.entity.ai.attributes.AttributeModifierMap;
 import net.minecraft.entity.ai.attributes.Attributes;
-import net.minecraft.entity.ai.goal.FleeSunGoal;
-import net.minecraft.entity.ai.goal.HurtByTargetGoal;
-import net.minecraft.entity.ai.goal.LookAtGoal;
-import net.minecraft.entity.ai.goal.LookRandomlyGoal;
-import net.minecraft.entity.ai.goal.NearestAttackableTargetGoal;
-import net.minecraft.entity.ai.goal.RestrictSunGoal;
-import net.minecraft.entity.ai.goal.SwimGoal;
-import net.minecraft.entity.ai.goal.WaterAvoidingRandomWalkingGoal;
-import net.minecraft.entity.merchant.villager.AbstractVillagerEntity;
+import net.minecraft.entity.ai.goal.*;
 import net.minecraft.entity.monster.MonsterEntity;
 import net.minecraft.entity.passive.AnimalEntity;
 import net.minecraft.entity.passive.PolarBearEntity;
@@ -69,7 +46,9 @@ import net.minecraft.world.IServerWorld;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
 
-public class EntityCyclops extends MonsterEntity implements IAnimatedEntity, IBlacklistedFromStatues, IVillagerFear, IHumanoid {
+import javax.annotation.Nullable;
+
+public class EntityCyclops extends MonsterEntity implements IAnimatedEntity, IBlacklistedFromStatues, IVillagerFear, IHumanoid, IHasCustomizableAttributes {
 
     private static final DataParameter<Boolean> BLINDED = EntityDataManager.createKey(EntityCyclops.class, DataSerializers.BOOLEAN);
     private static final DataParameter<Integer> VARIANT = EntityDataManager.createKey(EntityCyclops.class, DataSerializers.VARINT);
@@ -81,8 +60,9 @@ public class EntityCyclops extends MonsterEntity implements IAnimatedEntity, IBl
     private int animationTick;
     private Animation currentAnimation;
 
-    public EntityCyclops(EntityType type, World worldIn) {
+    public EntityCyclops(EntityType<EntityCyclops> type, World worldIn) {
         super(type, worldIn);
+        IHasCustomizableAttributes.applyAttributesForEntity(type, this);
         this.stepHeight = 2.5F;
         this.setPathPriority(PathNodeType.WATER, -1.0F);
         this.setPathPriority(PathNodeType.FENCE, 0.0F);
@@ -93,10 +73,28 @@ public class EntityCyclops extends MonsterEntity implements IAnimatedEntity, IBl
 
     }
 
+    public static AttributeModifierMap.MutableAttribute bakeAttributes() {
+        return MobEntity.func_233666_p_()
+            //HEALTH
+            .createMutableAttribute(Attributes.MAX_HEALTH, IafConfig.cyclopsMaxHealth)
+            //SPEED
+            .createMutableAttribute(Attributes.MOVEMENT_SPEED, 0.35D)
+            //ATTACK
+            .createMutableAttribute(Attributes.ATTACK_DAMAGE, IafConfig.cyclopsAttackStrength)
+            //FOLLOW RANGE
+            .createMutableAttribute(Attributes.FOLLOW_RANGE, 32D)
+            //ARMOR
+            .createMutableAttribute(Attributes.ARMOR, 20.0D);
+    }
+
+    @Override
+    public AttributeModifierMap.MutableAttribute getAttributes() {
+        return bakeAttributes();
+    }
+
     protected PathNavigator createNavigator(World worldIn) {
         return new PathNavigateCyclops(this, world);
     }
-
 
     protected int getExperiencePoints(PlayerEntity player) {
         return 40;
@@ -111,18 +109,37 @@ public class EntityCyclops extends MonsterEntity implements IAnimatedEntity, IBl
         this.goalSelector.addGoal(6, new LookAtGoal(this, PlayerEntity.class, 8.0F, 1.0F));
         this.goalSelector.addGoal(6, new LookRandomlyGoal(this));
         this.targetSelector.addGoal(1, new HurtByTargetGoal(this));
-        this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, LivingEntity.class, 0, true, true, new Predicate<LivingEntity>() {
+        this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, LivingEntity.class, 10, true, true, new Predicate<LivingEntity>() {
             @Override
             public boolean apply(@Nullable LivingEntity entity) {
-                return !EntityGorgon.isStoneMob(entity) && DragonUtils.isAlive(entity) && !(entity instanceof WaterMobEntity) && (!(entity instanceof PlayerEntity) || ((PlayerEntity)entity).isCreative()) && !(entity instanceof EntityCyclops) && !ServerEvents.isSheep(entity) && !(entity instanceof AnimalEntity && !(entity instanceof WolfEntity || entity instanceof PolarBearEntity || entity instanceof EntityDragonBase)) || entity instanceof EntityGorgon || entity instanceof AbstractVillagerEntity;
+                if (EntityGorgon.isStoneMob(entity))
+                    return false;
+                if (!DragonUtils.isAlive(entity))
+                    return false;
+                if (entity instanceof WaterMobEntity)
+                    return false;
+                if (entity instanceof PlayerEntity) {
+                    PlayerEntity playerEntity = (PlayerEntity) entity;
+                    if (playerEntity.isCreative() || playerEntity.isSpectator())
+                        return false;
+                }
+                if (entity instanceof EntityCyclops)
+                    return false;
+                if (entity instanceof AnimalEntity) {
+                    if (!(entity instanceof WolfEntity || entity instanceof PolarBearEntity || entity instanceof EntityDragonBase)) {
+                        return false;
+                    }
+                }
+                if (ServerEvents.isSheep(entity))
+                    return false;
+                return true;
             }
         }));
 
-        this.targetSelector.addGoal(2, new NearestAttackableTargetGoal(this, PlayerEntity.class, 0, true, true, new Predicate<PlayerEntity>() {
-
+        this.targetSelector.addGoal(2, new NearestAttackableTargetGoal(this, PlayerEntity.class, 10, true, true, new Predicate<PlayerEntity>() {
             @Override
             public boolean apply(@Nullable PlayerEntity entity) {
-                return !entity.isCreative();
+                return entity != null && !(entity.isCreative() || entity.isSpectator());
             }
         }));
         this.targetSelector.addGoal(3, new CyclopsAITargetSheepPlayers(this, PlayerEntity.class, true));
@@ -152,20 +169,6 @@ public class EntityCyclops extends MonsterEntity implements IAnimatedEntity, IBl
             this.setAnimation(ANIMATION_KICK);
             return true;
         }
-    }
-
-    public static AttributeModifierMap.MutableAttribute bakeAttributes() {
-        return MobEntity.func_233666_p_()
-                //HEALTH
-                .createMutableAttribute(Attributes.MAX_HEALTH, IafConfig.cyclopsMaxHealth)
-                //SPEED
-                .createMutableAttribute(Attributes.MOVEMENT_SPEED, 0.35D)
-                //ATTACK
-                .createMutableAttribute(Attributes.ATTACK_DAMAGE, IafConfig.cyclopsAttackStrength)
-                //FOLLOW RANGE
-                .createMutableAttribute(Attributes.FOLLOW_RANGE, 32D)
-                //ARMOR
-                .createMutableAttribute(Attributes.ARMOR, 20.0D);
     }
 
     @Override
@@ -252,7 +255,7 @@ public class EntityCyclops extends MonsterEntity implements IAnimatedEntity, IBl
 
     public void livingTick() {
         super.livingTick();
-        if (eyeEntity == null){
+        if (eyeEntity == null) {
             eyeEntity = new EntityCyclopsEye(this, 0.2F, 0, 7.4F, 1.2F, 0.6F, 1);
             eyeEntity.copyLocationAndAnglesFrom(this);
         }
@@ -302,13 +305,13 @@ public class EntityCyclops extends MonsterEntity implements IAnimatedEntity, IBl
             }
         }
         AnimationHandler.INSTANCE.updateAnimations(this);
-        if(eyeEntity == null){
+        if (eyeEntity == null) {
             eyeEntity = new EntityCyclopsEye(this, 0.2F, 0, 7.4F, 1.2F, 0.5F, 1);
             eyeEntity.copyLocationAndAnglesFrom(this);
             eyeEntity.setParent(this);
 
         }
-        if(!eyeEntity.shouldContinuePersisting()){
+        if (!eyeEntity.shouldContinuePersisting()) {
             world.addEntity(eyeEntity);
         }
         eyeEntity.setParent(this);

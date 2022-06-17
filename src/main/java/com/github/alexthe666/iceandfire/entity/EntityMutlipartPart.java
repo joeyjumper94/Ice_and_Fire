@@ -1,20 +1,11 @@
 package com.github.alexthe666.iceandfire.entity;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import com.github.alexthe666.iceandfire.IafConfig;
 import com.github.alexthe666.iceandfire.IceAndFire;
 import com.github.alexthe666.iceandfire.message.MessageMultipartInteract;
-
-import com.google.common.collect.ImmutableList;
 import net.minecraft.entity.*;
 import net.minecraft.entity.ai.attributes.AttributeModifierMap;
 import net.minecraft.entity.ai.attributes.Attributes;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.inventory.EquipmentSlotType;
-import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.network.IPacket;
 import net.minecraft.network.datasync.DataParameter;
@@ -23,13 +14,15 @@ import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.util.ActionResultType;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.Hand;
-import net.minecraft.util.HandSide;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.fml.network.NetworkHooks;
 
 import javax.annotation.Nullable;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 public abstract class EntityMutlipartPart extends Entity {
 
@@ -43,7 +36,7 @@ public abstract class EntityMutlipartPart extends Entity {
     protected float offsetY;
     protected float damageMultiplier;
 
-    public EntityMutlipartPart(EntityType t, World world) {
+    protected EntityMutlipartPart(EntityType<?> t, World world) {
         super(t, world);
         multipartSize = t.getSize();
     }
@@ -68,7 +61,8 @@ public abstract class EntityMutlipartPart extends Entity {
 
     }
 
-    public EntityMutlipartPart(EntityType t, Entity parent, float radius, float angleYaw, float offsetY, float sizeX, float sizeY, float damageMultiplier) {
+    public EntityMutlipartPart(EntityType<?> t, Entity parent, float radius, float angleYaw, float offsetY, float sizeX,
+        float sizeY, float damageMultiplier) {
         super(t, parent.world);
         this.setParent(parent);
         this.setScaleX(sizeX);
@@ -147,13 +141,12 @@ public abstract class EntityMutlipartPart extends Entity {
                     renderYawOffset = ((LivingEntity) parent).renderYawOffset;
                 }
                 if(isSlowFollow()){
-                    this.setPosition(parent.prevPosX + this.radius * Math.cos(renderYawOffset * (Math.PI / 180.0F) + this.angleYaw), parent.prevPosY + this.offsetY, parent.prevPosZ + this.radius * Math.sin(renderYawOffset * (Math.PI / 180.0F) + this.angleYaw));
+                    this.setPosition(parent.prevPosX + this.radius * MathHelper.cos((float) (renderYawOffset * (Math.PI / 180.0F) + this.angleYaw)), parent.prevPosY + this.offsetY, parent.prevPosZ + this.radius * MathHelper.sin((float) (renderYawOffset * (Math.PI / 180.0F) + this.angleYaw)));
                     double d0 = parent.getPosX() - this.getPosX();
                     double d1 = parent.getPosY() - this.getPosY();
                     double d2 = parent.getPosZ() - this.getPosZ();
-                    double d3 = d0 * d0 + d1 * d1 + d2 * d2;
-                    float f = (float)(MathHelper.atan2(d2, d0) * (double)(180F / (float)Math.PI)) - 90.0F;
-                    float f2 = -((float) (MathHelper.atan2(d1, MathHelper.sqrt(d0 * d0 + d2 * d2)) * (double) (180F / (float) Math.PI)));
+                    MathHelper.atan2(d2, d0);
+                    float f2 = -((float) (MathHelper.atan2(d1, MathHelper.sqrt(d0 * d0 + d2 * d2)) * (180F / (float) Math.PI)));
                     this.rotationPitch = this.limitAngle(this.rotationPitch, f2, 5.0F);
                     this.markVelocityChanged();
                     this.rotationYaw = renderYawOffset;
@@ -162,7 +155,7 @@ public abstract class EntityMutlipartPart extends Entity {
                         this.collideWithNearbyEntities();
                     }
                 }else{
-                    this.setPosition(parent.getPosX() + this.radius * Math.cos(renderYawOffset * (Math.PI / 180.0F) + this.angleYaw), parent.getPosY() + this.offsetY, parent.getPosZ() + this.radius * Math.sin(renderYawOffset * (Math.PI / 180.0F) + this.angleYaw));
+                    this.setPosition(parent.getPosX() + this.radius * MathHelper.cos((float) (renderYawOffset * (Math.PI / 180.0F) + this.angleYaw)), parent.getPosY() + this.offsetY, parent.getPosZ() + this.radius * MathHelper.sin((float) (renderYawOffset * (Math.PI / 180.0F) + this.angleYaw)));
                     this.markVelocityChanged();
                 }
                 if (!this.world.isRemote) {
@@ -203,6 +196,7 @@ public abstract class EntityMutlipartPart extends Entity {
     }
 
 
+    @Override
     public void remove() {
         this.remove(false);
     }
@@ -210,8 +204,7 @@ public abstract class EntityMutlipartPart extends Entity {
     public Entity getParent() {
         UUID id = getParentId();
         if (id != null && !world.isRemote) {
-            Entity e = ((ServerWorld) world).getEntityByUuid(id);
-            return e;
+            return ((ServerWorld) world).getEntityByUuid(id);
         }
         return null;
     }
@@ -242,12 +235,27 @@ public abstract class EntityMutlipartPart extends Entity {
     public void collideWithNearbyEntities() {
         List<Entity> entities = this.world.getEntitiesWithinAABBExcludingEntity(this, this.getBoundingBox().expand(0.20000000298023224D, 0.0D, 0.20000000298023224D));
         Entity parent = this.getParent();
-        if(parent != null){
-            entities.stream().filter(entity -> entity != parent && !parent.isRidingOrBeingRiddenBy(entity) && !(entity instanceof EntityMutlipartPart) && entity.canBePushed()).forEach(entity -> entity.applyEntityCollision(parent));
+        if (parent != null) {
+            entities.stream().filter(entity -> entity != parent && !isRidingOrBeingRiddenBy(parent, entity) && !(entity instanceof EntityMutlipartPart) && entity.canBePushed()).forEach(entity -> entity.applyEntityCollision(parent));
 
         }
     }
 
+    public static boolean isRidingOrBeingRiddenBy(Entity parent, Entity entityIn) {
+        for (Entity entity : parent.getPassengers()) {
+            if (entity.equals(entityIn)) {
+                return true;
+            }
+
+            if (entity.isRidingOrBeingRiddenBy(entityIn)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    @Override
     public ActionResultType processInitialInteract(PlayerEntity player, Hand hand) {
         Entity parent = getParent();
         if (world.isRemote && parent != null) {

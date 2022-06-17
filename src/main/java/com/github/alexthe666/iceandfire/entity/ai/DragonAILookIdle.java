@@ -5,8 +5,7 @@ import java.util.EnumSet;
 import com.github.alexthe666.iceandfire.entity.EntityDragonBase;
 
 import net.minecraft.entity.ai.goal.Goal;
-
-import net.minecraft.entity.ai.goal.Goal.Flag;
+import net.minecraft.util.math.MathHelper;
 
 public class DragonAILookIdle extends Goal {
     private EntityDragonBase dragon;
@@ -21,7 +20,7 @@ public class DragonAILookIdle extends Goal {
 
     @Override
     public boolean shouldExecute() {
-        if (!this.dragon.canMove() || dragon.getAnimation() == EntityDragonBase.ANIMATION_SHAKEPREY) {
+        if (!this.dragon.canMove() || dragon.getAnimation() == EntityDragonBase.ANIMATION_SHAKEPREY || dragon.isFuelingForge()) {
             return false;
         }
         return this.dragon.getRNG().nextFloat() < 0.02F;
@@ -34,9 +33,9 @@ public class DragonAILookIdle extends Goal {
 
     @Override
     public void startExecuting() {
-        double d0 = (Math.PI * 2D) * this.dragon.getRNG().nextDouble();
-        this.lookX = Math.cos(d0);
-        this.lookZ = Math.sin(d0);
+        final double d0 = (Math.PI * 2D) * this.dragon.getRNG().nextDouble();
+        this.lookX = MathHelper.cos((float) d0);
+        this.lookZ = MathHelper.sin((float) d0);
         this.idleTime = 20 + this.dragon.getRNG().nextInt(20);
     }
 

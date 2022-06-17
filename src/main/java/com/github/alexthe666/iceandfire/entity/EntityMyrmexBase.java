@@ -1,11 +1,5 @@
 package com.github.alexthe666.iceandfire.entity;
 
-import java.util.Random;
-import java.util.Set;
-import java.util.UUID;
-
-import javax.annotation.Nullable;
-
 import com.github.alexthe666.citadel.animation.Animation;
 import com.github.alexthe666.citadel.animation.AnimationHandler;
 import com.github.alexthe666.citadel.animation.IAnimatedEntity;
@@ -13,27 +7,22 @@ import com.github.alexthe666.iceandfire.IafConfig;
 import com.github.alexthe666.iceandfire.block.BlockMyrmexConnectedResin;
 import com.github.alexthe666.iceandfire.block.BlockMyrmexResin;
 import com.github.alexthe666.iceandfire.config.BiomeConfig;
+import com.github.alexthe666.iceandfire.entity.util.IHasCustomizableAttributes;
 import com.github.alexthe666.iceandfire.entity.util.MyrmexHive;
 import com.github.alexthe666.iceandfire.item.IafItemRegistry;
 import com.github.alexthe666.iceandfire.misc.IafSoundRegistry;
 import com.github.alexthe666.iceandfire.misc.IafTagRegistry;
 import com.github.alexthe666.iceandfire.pathfinding.raycoms.AdvancedPathNavigate;
+import com.github.alexthe666.iceandfire.pathfinding.raycoms.IPassabilityNavigator;
 import com.github.alexthe666.iceandfire.pathfinding.raycoms.PathResult;
 import com.github.alexthe666.iceandfire.pathfinding.raycoms.pathjobs.ICustomSizeNavigator;
 import com.github.alexthe666.iceandfire.world.MyrmexWorldData;
 import com.github.alexthe666.iceandfire.world.gen.WorldGenMyrmexHive;
 import com.google.common.collect.Sets;
-
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
-import net.minecraft.entity.AgeableEntity;
-import net.minecraft.entity.CreatureAttribute;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.ILivingEntityData;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.SpawnReason;
-import net.minecraft.entity.ai.goal.Goal;
+import net.minecraft.block.material.Material;
+import net.minecraft.entity.*;
 import net.minecraft.entity.item.ExperienceOrbEntity;
 import net.minecraft.entity.merchant.IMerchant;
 import net.minecraft.entity.merchant.villager.VillagerTrades;
@@ -55,12 +44,7 @@ import net.minecraft.pathfinding.PathNavigator;
 import net.minecraft.potion.EffectInstance;
 import net.minecraft.potion.Effects;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.util.ActionResultType;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.Hand;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.SoundEvent;
+import net.minecraft.util.*;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
@@ -71,10 +55,13 @@ import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.IServerWorld;
 import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
-public abstract class EntityMyrmexBase extends AnimalEntity implements IAnimatedEntity, IMerchant, ICustomSizeNavigator {
+import javax.annotation.Nullable;
+import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
+
+public abstract class EntityMyrmexBase extends AnimalEntity implements IAnimatedEntity, IMerchant, ICustomSizeNavigator, IPassabilityNavigator, IHasCustomizableAttributes {
 
     public static final Animation ANIMATION_PUPA_WIGGLE = Animation.create(20);
     private static final DataParameter<Byte> CLIMBING = EntityDataManager.createKey(EntityMyrmexBase.class, DataSerializers.BYTE);
@@ -100,9 +87,11 @@ public abstract class EntityMyrmexBase extends AnimalEntity implements IAnimated
     private PlayerEntity customer;
 
 
-    public EntityMyrmexBase(EntityType t, World worldIn) {
+    public EntityMyrmexBase(EntityType<? extends EntityMyrmexBase> t, World worldIn) {
         super(t, worldIn);
+        IHasCustomizableAttributes.applyAttributesForEntity(t, this);
         this.stepHeight = 1;
+        this.jumpMovementFactor = 0.2f;
         this.navigator = createNavigator(worldIn, AdvancedPathNavigate.MovementType.CLIMBING);
         //this.moveController = new GroundMoveHelper(this);
     }
@@ -380,7 +369,7 @@ public abstract class EntityMyrmexBase extends AnimalEntity implements IAnimated
     public boolean isOnLadder() {
         if (this.getNavigator() instanceof AdvancedPathNavigate ){
             //Make sure the entity can only climb when it's on or below the path. This prevents the entity from getting stuck
-            if(((AdvancedPathNavigate) this.getNavigator()).entityOnOrBelowPath(this, new Vector3d(1.1,1.5,1.1)))
+            if (((AdvancedPathNavigate) this.getNavigator()).entityOnAndBelowPath(this, new Vector3d(1.1, 0, 1.1)))
                 return true;
         }
         return super.isOnLadder();
@@ -598,7 +587,7 @@ public abstract class EntityMyrmexBase extends AnimalEntity implements IAnimated
     public boolean isInHive(){
         if (getHive() != null) {
             for (BlockPos pos : getHive().getAllRooms()) {
-                if (isCloseEnoughToTarget(MyrmexHive.getGroundedPos(getWorld(), pos), 20))
+                if (isCloseEnoughToTarget(MyrmexHive.getGroundedPos(getWorld(), pos), 50))
                     return true;
             }
         }
@@ -635,7 +624,6 @@ public abstract class EntityMyrmexBase extends AnimalEntity implements IAnimated
         return this.getHive() == null;
     }
 
-    @OnlyIn(Dist.CLIENT)
     public void handleStatusUpdate(byte id) {
         if (id == 76) {
             this.playVillagerEffect();
@@ -725,7 +713,6 @@ public abstract class EntityMyrmexBase extends AnimalEntity implements IAnimated
         return this.offers;
     }
 
-    @OnlyIn(Dist.CLIENT)
     public void setClientSideOffers(@Nullable MerchantOffers offers) {
     }
 
@@ -818,10 +805,6 @@ public abstract class EntityMyrmexBase extends AnimalEntity implements IAnimated
 
     }
 
-    private boolean canLevelUp() {
-        return true;
-    }
-
     private void levelUp() {
         this.populateTradeData();
     }
@@ -873,25 +856,37 @@ public abstract class EntityMyrmexBase extends AnimalEntity implements IAnimated
         }
         return false;
     }
+
     //if the path created couldn't reach the destination or if the entity isn't close enough to the targetBlock
-    public boolean pathReachesTarget(PathResult path, BlockPos target, double distanceSquared){
-        if((!path.isInProgress() && !path.isPathReachingDestination())
-                || (!this.isCloseEnoughToTarget(target,distanceSquared) && this.getNavigator().getPath() != null && this.getNavigator().getPath().isFinished())) {
-            return false;
-        }
-        return true;
+    public boolean pathReachesTarget(PathResult path, BlockPos target, double distanceSquared) {
+        return !path.failedToReachDestination()
+            && (this.isCloseEnoughToTarget(target, distanceSquared) || this.getNavigator().getPath() == null || !this.getNavigator().getPath().isFinished());
     }
 
-
-
-    public boolean isSmallerThanBlock(){
+    public boolean isSmallerThanBlock() {
         return false;
     }
 
-    public float getXZNavSize(){
+    public float getXZNavSize() {
         return getWidth() / 2;
     }
-    public int getYNavSize(){
-        return (int)getHeight() / 2;
+
+    public int getYNavSize() {
+        return (int) getHeight() / 2;
+    }
+
+    @Override
+    public int maxSearchNodes() {
+        return IafConfig.maxDragonPathingNodes;
+    }
+
+    @Override
+    public boolean isBlockExplicitlyPassable(BlockState state, BlockPos pos, BlockPos entityPos) {
+        return false;
+    }
+
+    @Override
+    public boolean isBlockExplicitlyNotPassable(BlockState state, BlockPos pos, BlockPos entityPos) {
+        return state.getMaterial() == Material.LEAVES;
     }
 }

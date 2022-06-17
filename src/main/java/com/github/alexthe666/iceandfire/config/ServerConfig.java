@@ -1,11 +1,9 @@
 package com.github.alexthe666.iceandfire.config;
 
-import java.util.List;
-
-import com.github.alexthe666.iceandfire.world.DragonPosWorldData;
 import com.google.common.collect.Lists;
-
 import net.minecraftforge.common.ForgeConfigSpec;
+
+import java.util.List;
 
 public class ServerConfig {
 
@@ -134,6 +132,7 @@ public class ServerConfig {
     public final ForgeConfigSpec.IntValue generateMausoleumChance;
     public final ForgeConfigSpec.BooleanValue spawnLiches;
     public final ForgeConfigSpec.IntValue lichSpawnRate;
+    public final ForgeConfigSpec.IntValue lichSpawnChance;
     public final ForgeConfigSpec.DoubleValue hydraMaxHealth;
     public final ForgeConfigSpec.BooleanValue generateHydraCaves;
     public final ForgeConfigSpec.IntValue generateHydraChance;
@@ -162,10 +161,12 @@ public class ServerConfig {
     public final ForgeConfigSpec.BooleanValue ghostSpawnFromPlayerDeaths;
     public ForgeConfigSpec.IntValue dragonPathfindingThreads;
     public ForgeConfigSpec.IntValue maxDragonPathingNodes;
+    public ForgeConfigSpec.BooleanValue pathfindingDebug;
     public final ForgeConfigSpec.BooleanValue dragonWeaponFireAbility;
     public final ForgeConfigSpec.BooleanValue dragonWeaponIceAbility;
     public final ForgeConfigSpec.BooleanValue dragonWeaponLightningAbility;
     public ForgeConfigSpec.IntValue villagerHouseWeight;
+    public ForgeConfigSpec.BooleanValue allowAttributeOverriding;
 
     public ServerConfig(final ForgeConfigSpec.Builder builder) {
         builder.push("Generation");
@@ -207,7 +208,7 @@ public class ServerConfig {
         this.oreToStoneRatioForDragonCaves = buildInt(builder, "Dragon Cave Ore Ratio", "all", 45, 1, 10000, "Ratio of Stone(this number) to Ores in Dragon Caves");
         builder.pop();
         builder.push("Structures-Features");
-        this.dangerousWorldGenDistanceLimit = buildInt(builder, "Dangerous World Gen Dist From Spawn", "all", 800, 1, 10000, "How far away dangerous structures(dragon roosts, cyclops caves, etc.) must be from spawn(0, 0).");
+        this.dangerousWorldGenDistanceLimit = buildInt(builder, "Dangerous World Gen Dist From Spawn", "all", 800, 1, 10000, "How far away dangerous structures(dragon roosts, cyclops caves, etc.) must be from spawn.");
         this.dangerousWorldGenSeparationLimit = buildInt(builder, "Dangerous World Gen Dist Seperation", "all", 300, 1, 10000, "How far away dangerous structures(dragon roosts, cyclops caves, etc.) must be from the last generated structure.");
 
         this.spawnGlaciers = buildBoolean(builder, "Generate Glaciers", "all", true, "Whether to generate glacier biomes or not");
@@ -324,7 +325,7 @@ public class ServerConfig {
         this.spawnTrolls = buildBoolean(builder, "Spawn Trolls", "all", true, "True if trolls are allowed to spawn");
         this.trollsDropWeapon = buildBoolean(builder, "Trolls Drop Weapon", "all", true, "True if trolls are allowed to drop their weapon on death.");
         this.trollSpawnRate = buildInt(builder, "Troll Spawn Weight", "all", 40, 1, 10000, "Troll spawn weight. Lower = lower chance to spawn");
-        this.trollSpawnCheckChance = buildInt(builder, "Troll Spawn Check Chance", "all", 10, 0, 10000, "A double check to see if the game can spawn trolls. Higher number = lower chance to spawn.");
+        this.trollSpawnCheckChance = buildInt(builder, "Troll Spawn Check Chance", "all", 2, 0, 10000, "A double check to see if the game can spawn trolls. Higher number = lower chance to spawn.");
         this.trollMaxHealth = buildDouble(builder, "Troll Max Health", "all", 50, 1, 10000, "Maximum troll health");
         this.trollAttackStrength = buildDouble(builder, "Troll Attack Strength", "all", 10, 1, 10000, "Troll attack strength");
         builder.pop();
@@ -372,6 +373,7 @@ public class ServerConfig {
         builder.push("Others");
         this.spawnLiches = buildBoolean(builder, "Spawn Liches", "all", true, "True if dread liches are allowed to spawn");
         this.lichSpawnRate = buildInt(builder, "Lich Spawn Weight", "all", 2, 1, 10000, "Dread Lich spawn weight. Lower = lower chance to spawn");
+        this.lichSpawnChance = buildInt(builder, "Lich Spawn Chance", "all", 30, 1, 10000, "Dread Lich spawn chance. Lower = higher chance to spawn");
 
         this.hydraMaxHealth = buildDouble(builder, "Hydra Max Health", "all", 250, 1, 10000, "Maximum hydra health");
         this.generateHydraCaves = buildBoolean(builder, "Generate Hydra Caves", "all", true, "True if hydra caves are allowed to generate");
@@ -381,6 +383,8 @@ public class ServerConfig {
         this.ghostAttackStrength = buildDouble(builder, "Ghost Attack Strength", "all", 3F, 0.0F, 10000.0F, "Maximum ghost attack strength.");
         this.ghostSpawnFromPlayerDeaths = buildBoolean(builder, "Ghost Spawn from PvP deaths", "all", true, "True if ghosts can rarely spawn from brutal PvP deaths.");
         this.villagerHouseWeight = buildInt(builder, "Villager Scribe House Weight", "all", 22, 0, 10000, "Villager Scribe House generation weight. Lower = lower chance to spawn");
+
+        this.allowAttributeOverriding = buildBoolean(builder, "Allow Attribute Overriding", "all", true, "Allows attributes for mobs to be overridden via the config file. One might want to disable this if other mods are enabled that change mob attributes e.g armor, health etc...");
         builder.pop();
         builder.pop();
         builder.push("Items");
@@ -398,6 +402,7 @@ public class ServerConfig {
         builder.push("Pathfinding");
         this.dragonPathfindingThreads = buildInt(builder, "Dragon Pathfinding Threads", "all", 3, 1, Integer.MAX_VALUE, "Maximum threads to use for dragon/myrmex pathfinding. Increase this number if pathing is slow and you have many cores.");
         this.maxDragonPathingNodes = buildInt(builder, "Dragon Max Pathfinding Nodes", "all", 5000, 1, Integer.MAX_VALUE, "Maximum nodes for dragons/myrmex to path too. Decrease this is dragon pathfinding is super slow or intensive.");
+        this.pathfindingDebug = buildBoolean(builder, "Debug Pathfinding Mode", "all", false, "Enables the option to draw the pathfinding nodes when enabled (use a stick on an entity)");
     }
 
     private static ForgeConfigSpec.BooleanValue buildBoolean(ForgeConfigSpec.Builder builder, String name, String catagory, boolean defaultValue, String comment){

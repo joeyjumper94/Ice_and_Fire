@@ -1,11 +1,10 @@
 package com.github.alexthe666.iceandfire;
 
-import java.util.List;
-
 import com.github.alexthe666.iceandfire.config.ConfigHolder;
 import com.google.common.collect.Lists;
-
 import net.minecraftforge.fml.config.ModConfig;
+
+import java.util.List;
 
 public class IafConfig {
     public static boolean customMainMenu = true;
@@ -109,7 +108,7 @@ public class IafConfig {
     public static int stymphalianBirdSpawnChance = 80;
     public static boolean spawnTrolls = true;
     public static int trollSpawnRate = 60;
-    public static int trollSpawnCheckChance = 10;
+    public static int trollSpawnCheckChance = 2;
     public static boolean trollsDropWeapon = true;
     public static double trollMaxHealth = 50;
     public static double trollAttackStrength = 10;
@@ -150,6 +149,7 @@ public class IafConfig {
     public static int generateMausoleumChance = 30;
     public static boolean spawnLiches = true;
     public static int lichSpawnRate = 4;
+    public static int lichSpawnChance = 30;
     public static double hydraMaxHealth = 250D;
     public static boolean generateHydraCaves = true;
     public static int generateHydraChance = 120;
@@ -169,10 +169,12 @@ public class IafConfig {
 
     public static int dragonPathfindingThreads = 3;
     public static int maxDragonPathingNodes = 5000;
+    public static boolean pathfindingDebug = false;
     public static boolean dragonWeaponFireAbility = true;
     public static boolean dragonWeaponIceAbility = true;
     public static boolean dragonWeaponLightningAbility = true;
     public static int villagerHouseWeight = 22;
+    public static boolean allowAttributeOverriding = true;
 
     public static void bakeClient(final ModConfig config) {
         try {
@@ -311,6 +313,7 @@ public class IafConfig {
             generateMausoleumChance = ConfigHolder.SERVER.generateMausoleumChance.get();
             spawnLiches = ConfigHolder.SERVER.spawnLiches.get();
             lichSpawnRate = ConfigHolder.SERVER.lichSpawnRate.get();
+            lichSpawnChance = ConfigHolder.SERVER.lichSpawnChance.get();
             hydraMaxHealth = ConfigHolder.SERVER.hydraMaxHealth.get();
             generateHydraCaves = ConfigHolder.SERVER.generateHydraCaves.get();
             generateHydraChance = ConfigHolder.SERVER.generateHydraChance.get();
@@ -342,7 +345,8 @@ public class IafConfig {
             dragonWeaponIceAbility = ConfigHolder.SERVER.dragonWeaponIceAbility.get();
             dragonWeaponLightningAbility = ConfigHolder.SERVER.dragonWeaponLightningAbility.get();
             villagerHouseWeight = ConfigHolder.SERVER.villagerHouseWeight.get();
-
+            allowAttributeOverriding = ConfigHolder.SERVER.allowAttributeOverriding.get();
+            pathfindingDebug = ConfigHolder.SERVER.pathfindingDebug.get();
         } catch (Exception e) {
             IceAndFire.LOGGER.warn("An exception was caused trying to load the common config for Ice and Fire.");
             e.printStackTrace();

@@ -1,23 +1,14 @@
 package com.github.alexthe666.iceandfire.entity;
 
-import java.util.List;
-import java.util.Random;
-
-import javax.annotation.Nullable;
-
 import com.github.alexthe666.citadel.animation.Animation;
 import com.github.alexthe666.citadel.animation.AnimationHandler;
 import com.github.alexthe666.citadel.animation.IAnimatedEntity;
 import com.github.alexthe666.iceandfire.IafConfig;
 import com.github.alexthe666.iceandfire.entity.ai.*;
-import com.github.alexthe666.iceandfire.entity.util.DragonUtils;
-import com.github.alexthe666.iceandfire.entity.util.IAnimalFear;
-import com.github.alexthe666.iceandfire.entity.util.IMultipartEntity;
-import com.github.alexthe666.iceandfire.entity.util.IVillagerFear;
+import com.github.alexthe666.iceandfire.entity.util.*;
 import com.github.alexthe666.iceandfire.enums.EnumSeaSerpent;
 import com.github.alexthe666.iceandfire.misc.IafSoundRegistry;
 import com.google.common.base.Predicate;
-
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
@@ -30,12 +21,9 @@ import net.minecraft.entity.ai.goal.HurtByTargetGoal;
 import net.minecraft.entity.ai.goal.LookAtGoal;
 import net.minecraft.entity.ai.goal.LookRandomlyGoal;
 import net.minecraft.entity.item.BoatEntity;
-import net.minecraft.entity.merchant.villager.AbstractVillagerEntity;
-import net.minecraft.entity.merchant.villager.VillagerEntity;
 import net.minecraft.entity.passive.AnimalEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.fluid.FluidState;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.CompoundNBT;
@@ -50,22 +38,19 @@ import net.minecraft.tags.FluidTags;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.SoundEvent;
-import net.minecraft.util.SoundEvents;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RayTraceContext;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.vector.Vector3d;
-import net.minecraft.world.Difficulty;
-import net.minecraft.world.DifficultyInstance;
-import net.minecraft.world.GameRules;
-import net.minecraft.world.IServerWorld;
-import net.minecraft.world.World;
+import net.minecraft.world.*;
 import net.minecraft.world.server.ServerWorld;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
-public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, IMultipartEntity, IVillagerFear, IAnimalFear {
+import javax.annotation.Nullable;
+import java.util.List;
+import java.util.Random;
+
+public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, IMultipartEntity, IVillagerFear, IAnimalFear, IHasCustomizableAttributes {
 
     public static final Animation ANIMATION_BITE = Animation.create(15);
     public static final Animation ANIMATION_SPEAK = Animation.create(15);
@@ -76,12 +61,14 @@ public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, I
     private static final DataParameter<Boolean> JUMPING = EntityDataManager.createKey(EntitySeaSerpent.class, DataSerializers.BOOLEAN);
     private static final DataParameter<Boolean> BREATHING = EntityDataManager.createKey(EntitySeaSerpent.class, DataSerializers.BOOLEAN);
     private static final DataParameter<Boolean> ANCIENT = EntityDataManager.createKey(EntitySeaSerpent.class, DataSerializers.BOOLEAN);
-    private static final Predicate NOT_SEA_SERPENT = new Predicate<Entity>() {
+    private static final Predicate<Entity> NOT_SEA_SERPENT = new Predicate<Entity>() {
+        @Override
         public boolean apply(@Nullable Entity entity) {
             return entity instanceof LivingEntity && !(entity instanceof EntitySeaSerpent) && DragonUtils.isAlive((LivingEntity) entity);
         }
     };
-    private static final Predicate NOT_SEA_SERPENT_IN_WATER = new Predicate<Entity>() {
+    private static final Predicate<Entity> NOT_SEA_SERPENT_IN_WATER = new Predicate<Entity>() {
+        @Override
         public boolean apply(@Nullable Entity entity) {
             return entity instanceof LivingEntity && !(entity instanceof EntitySeaSerpent) && DragonUtils.isAlive((LivingEntity) entity) && entity.isInWaterOrBubbleColumn();
         }
@@ -103,13 +90,14 @@ public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, I
     public int jumpCooldown = 0;
     private int ticksSinceRoar = 0;
     private boolean isBreathing;
-    private float[] tailYaw = new float[5];
-    private float[] prevTailYaw = new float[5];
-    private float[] tailPitch = new float[5];
-    private float[] prevTailPitch = new float[5];
+    private final float[] tailYaw = new float[5];
+    private final float[] prevTailYaw = new float[5];
+    private final float[] tailPitch = new float[5];
+    private final float[] prevTailPitch = new float[5];
 
-    public EntitySeaSerpent(EntityType t, World worldIn) {
+    public EntitySeaSerpent(EntityType<EntitySeaSerpent> t, World worldIn) {
         super(t, worldIn);
+        IHasCustomizableAttributes.applyAttributesForEntity(t, this);
         switchNavigator(false);
         this.ignoreFrustumCheck = true;
         resetParts(1.0F);
@@ -132,15 +120,17 @@ public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, I
         return world.getFluidState(pos).isTagged(FluidTags.WATER);
     }
 
+    @Override
     public SoundCategory getSoundCategory() {
         return SoundCategory.HOSTILE;
     }
 
-    @OnlyIn(Dist.CLIENT)
+    @Override
     public boolean isInRangeToRender3d(double x, double y, double z) {
         return true;
     }
 
+    @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new SeaSerpentAIGetInWater(this));
         this.goalSelector.addGoal(1, new SeaSerpentAIMeleeJump(this));
@@ -154,10 +144,12 @@ public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, I
         this.targetSelector.addGoal(3, new FlyingAITarget(this, PlayerEntity.class, 0, false, false, NOT_SEA_SERPENT));
     }
 
+    @Override
     protected int getExperiencePoints(PlayerEntity player) {
         return this.isAncient() ? 30 : 15;
     }
 
+    @Override
     public void collideWithNearbyEntities() {
         List<Entity> entities = this.world.getEntitiesWithinAABBExcludingEntity(this, this.getBoundingBox().expand(0.20000000298023224D, 0.0D, 0.20000000298023224D));
         entities.stream().filter(entity -> !(entity instanceof EntityMutlipartPart) && entity.canBePushed()).forEach(entity -> entity.applyEntityCollision(this));
@@ -183,6 +175,7 @@ public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, I
 
     }
 
+    @Override
     public CreatureAttribute getCreatureAttribute() {
         return CreatureAttribute.WATER;
     }
@@ -201,16 +194,21 @@ public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, I
                 .createMutableAttribute(Attributes.ARMOR, 3.0D);
     }
 
+    @Override
+    public AttributeModifierMap.MutableAttribute getAttributes() {
+        return bakeAttributes();
+    }
+
     public void resetParts(float scale) {
         clearParts();
         segments = new EntityMutlipartPart[9];
         for (int i = 0; i < segments.length; i++) {
             if (i > 3) {
                 Entity parentToSet = i <= 4 ? this : segments[i-1];
-                segments[i] = new EntitSlowPart(parentToSet, 0.5F * scale, 180, 0, 0.5F * scale, 0.5F * scale, 1);
+                segments[i] = new EntitySlowPart(parentToSet, 0.5F * scale, 180, 0, 0.5F * scale, 0.5F * scale, 1);
             } else {
                 Entity parentToSet = i == 0 ? this : segments[i-1];
-                segments[i] = new EntitSlowPart(parentToSet, -0.4F * scale, 180, 0, 0.45F * scale, 0.4F * scale, 1);
+                segments[i] = new EntitySlowPart(parentToSet, -0.4F * scale, 180, 0, 0.45F * scale, 0.4F * scale, 1);
             }
             segments[i].copyLocationAndAnglesFrom(this);
         }
@@ -234,6 +232,7 @@ public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, I
         }
     }
 
+    @Override
     public void remove() {
         clearParts();
         super.remove();
@@ -249,6 +248,7 @@ public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, I
         return this.getSeaSerpentScale();
     }
 
+    @Override
     public void recalculateSize() {
         super.recalculateSize();
         float scale = this.getSeaSerpentScale();
@@ -320,9 +320,9 @@ public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, I
 
     private void spawnParticlesAroundEntity(IParticleData type, Entity entity, int count) {
         for (int i = 0; i < count; i++) {
-            double x = entity.getPosX() + (double) (this.rand.nextFloat() * entity.getWidth() * 2.0F) - (double) entity.getWidth();
-            double y = entity.getPosY() + 0.5D + (double) (this.rand.nextFloat() * entity.getHeight());
-            double z = entity.getPosZ() + (double) (this.rand.nextFloat() * entity.getWidth() * 2.0F) - (double) entity.getWidth();
+            double x = entity.getPosX() + this.rand.nextFloat() * entity.getWidth() * 2.0F - entity.getWidth();
+            double y = entity.getPosY() + 0.5D + this.rand.nextFloat() * entity.getHeight();
+            double z = entity.getPosZ() + this.rand.nextFloat() * entity.getWidth() * 2.0F - entity.getWidth();
             if (this.world.getBlockState(new BlockPos(x, y, z)).getMaterial() == Material.WATER) {
                 this.world.addParticle(type, x, y, z, 0, 0, 0);
             }
@@ -443,9 +443,11 @@ public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, I
         }
     }
 
+    @Override
     protected void updateFallState(double y, boolean onGroundIn, BlockState state, BlockPos pos) {
     }
 
+    @Override
     public void livingTick() {
         super.livingTick();
         if (!world.isRemote) {
@@ -563,7 +565,7 @@ public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, I
                 float f = MathHelper.sqrt(xRatio * xRatio + zRatio * zRatio);
                 float strength = 0.3F * this.getSeaSerpentScale();
                 entity.setMotion(entity.getMotion().mul(0.5D, 1D, 0.5D));
-                entity.setMotion(entity.getMotion().add(xRatio / (double) f * (double) strength, strength, zRatio / (double) f * (double) strength));
+                entity.setMotion(entity.getMotion().add(xRatio / f * strength, strength, zRatio / f * strength));
             }
         }
 
@@ -575,7 +577,7 @@ public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, I
             boat.remove();
             if (this.world.getGameRules().getBoolean(GameRules.DO_ENTITY_DROPS)) {
                 for (int i = 0; i < 3; ++i) {
-                    boat.entityDropItem(new ItemStack(Item.getItemFromBlock(boat.getBoatType().asPlank())), 0.0F);
+                    boat.entityDropItem(new ItemStack(boat.getBoatType().asPlank().asItem()), 0.0F);
                 }
                 for (int j = 0; j < 2; ++j) {
                     boat.entityDropItem(new ItemStack(Items.STICK));
@@ -604,10 +606,10 @@ public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, I
         double x = -MathHelper.sin(this.rotationYaw * 0.017453292F) * MathHelper.cos(this.rotationPitch * 0.017453292F);
         double z = MathHelper.cos(this.rotationYaw * 0.017453292F) * MathHelper.cos(this.rotationPitch * 0.017453292F);
         float f = MathHelper.sqrt(x * x + z * z);
-        x = x / (double) f;
-        z = z / (double) f;
-        x = x * (double) velocity;
-        z = z * (double) velocity;
+        x = x / f;
+        z = z / f;
+        x = x * velocity;
+        z = z * velocity;
         this.setMotion(x, this.getMotion().y, z);
     }
 
@@ -711,21 +713,25 @@ public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, I
         return new Animation[]{ANIMATION_BITE, ANIMATION_ROAR, ANIMATION_SPEAK};
     }
 
+    @Override
     @Nullable
     protected SoundEvent getAmbientSound() {
         return IafSoundRegistry.SEA_SERPENT_IDLE;
     }
 
+    @Override
     @Nullable
     protected SoundEvent getHurtSound(DamageSource source) {
         return IafSoundRegistry.SEA_SERPENT_HURT;
     }
 
+    @Override
     @Nullable
     protected SoundEvent getDeathSound() {
         return IafSoundRegistry.SEA_SERPENT_DIE;
     }
 
+    @Override
     public void playAmbientSound() {
         if (this.getAnimation() == this.NO_ANIMATION) {
             this.setAnimation(ANIMATION_SPEAK);
@@ -733,6 +739,7 @@ public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, I
         super.playAmbientSound();
     }
 
+    @Override
     protected void playHurtSound(DamageSource source) {
         if (this.getAnimation() == this.NO_ANIMATION) {
             this.setAnimation(ANIMATION_SPEAK);
@@ -764,18 +771,18 @@ public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, I
                     float f1 = 0;
                     float f2 = 0;
                     float f3 = 0;
-                    float headPosX = f1 + (float) (this.segments[0].getPosX() + 1.3F * getSeaSerpentScale() * Math.cos((rotationYaw + 90) * Math.PI / 180));
-                    float headPosZ = f2 + (float) (this.segments[0].getPosZ() + 1.3F * getSeaSerpentScale() * Math.sin((rotationYaw + 90) * Math.PI / 180));
+                    float headPosX = f1 + (float) (this.segments[0].getPosX() + 1.3F * getSeaSerpentScale() * MathHelper.cos((float) ((rotationYaw + 90) * Math.PI / 180)));
+                    float headPosZ = f2 + (float) (this.segments[0].getPosZ() + 1.3F * getSeaSerpentScale() * MathHelper.sin((float) ((rotationYaw + 90) * Math.PI / 180)));
                     float headPosY = f3 + (float) (this.segments[0].getPosY() + 0.2F * getSeaSerpentScale());
                     double d2 = entity.getPosX() - headPosX;
                     double d3 = entity.getPosY() - headPosY;
                     double d4 = entity.getPosZ() - headPosZ;
                     float inaccuracy = 1.0F;
-                    d2 = d2 + this.rand.nextGaussian() * 0.007499999832361937D * (double) inaccuracy;
-                    d3 = d3 + this.rand.nextGaussian() * 0.007499999832361937D * (double) inaccuracy;
-                    d4 = d4 + this.rand.nextGaussian() * 0.007499999832361937D * (double) inaccuracy;
-                    EntitySeaSerpentBubbles entitylargefireball = new EntitySeaSerpentBubbles(IafEntityRegistry.SEA_SERPENT_BUBBLES, world, this, d2, d3, d4);
-                    float size = 0.8F;
+                    d2 = d2 + this.rand.nextGaussian() * 0.007499999832361937D * inaccuracy;
+                    d3 = d3 + this.rand.nextGaussian() * 0.007499999832361937D * inaccuracy;
+                    d4 = d4 + this.rand.nextGaussian() * 0.007499999832361937D * inaccuracy;
+                    EntitySeaSerpentBubbles entitylargefireball = new EntitySeaSerpentBubbles(
+                        IafEntityRegistry.SEA_SERPENT_BUBBLES.get(), world, this, d2, d3, d4);
                     entitylargefireball.setPosition(headPosX, headPosY, headPosZ);
                     if (!world.isRemote) {
                         world.addEntity(entitylargefireball);
@@ -840,6 +847,7 @@ public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, I
         return false;
     }
 
+    @Override
     public int getMaxFallHeight() {
         return 1000;
     }
@@ -875,19 +883,19 @@ public class EntitySeaSerpent extends AnimalEntity implements IAnimatedEntity, I
                 double d1 = this.posY - this.dolphin.getPosY();
                 double d2 = this.posZ - this.dolphin.getPosZ();
                 double d3 = d0 * d0 + d1 * d1 + d2 * d2;
-                if (d3 < (double) 2.5000003E-7F) {
+                if (d3 < 2.5000003E-7F) {
                     this.mob.setMoveForward(0.0F);
                 } else {
-                    float f = (float) (MathHelper.atan2(d2, d0) * (double) (180F / (float) Math.PI)) - 90.0F;
+                    float f = (float) (MathHelper.atan2(d2, d0) * (180F / (float) Math.PI)) - 90.0F;
                     this.dolphin.rotationYaw = this.limitAngle(this.dolphin.rotationYaw, f, 10.0F);
                     this.dolphin.renderYawOffset = this.dolphin.rotationYaw;
                     this.dolphin.rotationYawHead = this.dolphin.rotationYaw;
                     float f1 = (float) (this.speed * 3);
                     if (this.dolphin.isInWater() ) {
                         this.dolphin.setAIMoveSpeed(f1 * 0.02F);
-                        float f2 = -((float) (MathHelper.atan2(d1, MathHelper.sqrt(d0 * d0 + d2 * d2)) * (double) (180F / (float) Math.PI)));
+                        float f2 = -((float) (MathHelper.atan2(d1, MathHelper.sqrt(d0 * d0 + d2 * d2)) * (180F / (float) Math.PI)));
                         f2 = MathHelper.clamp(MathHelper.wrapDegrees(f2), -85.0F, 85.0F);
-                        this.dolphin.setMotion(this.dolphin.getMotion().add(0.0D, (double) this.dolphin.getAIMoveSpeed() * d1 * 0.6D, 0.0D));
+                        this.dolphin.setMotion(this.dolphin.getMotion().add(0.0D, this.dolphin.getAIMoveSpeed() * d1 * 0.6D, 0.0D));
                         this.dolphin.rotationPitch = this.limitAngle(this.dolphin.rotationPitch, f2, 1.0F);
                         float f3 = MathHelper.cos(this.dolphin.rotationPitch * ((float) Math.PI / 180F));
                         float f4 = MathHelper.sin(this.dolphin.rotationPitch * ((float) Math.PI / 180F));

@@ -15,8 +15,10 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.MobEntity;
+import net.minecraft.entity.ai.attributes.AttributeModifierManager;
 import net.minecraft.entity.ai.attributes.AttributeModifierMap;
 import net.minecraft.entity.ai.attributes.Attributes;
+import net.minecraft.entity.ai.attributes.GlobalEntityTypeAttributes;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.EquipmentSlotType;
 import net.minecraft.item.ItemStack;
@@ -52,7 +54,7 @@ public class EntityDragonEgg extends LivingEntity implements IBlacklistedFromSta
     public void writeAdditional(CompoundNBT tag) {
         super.writeAdditional(tag);
         tag.putInt("Color", (byte) this.getEggType().ordinal());
-        tag.putByte("DragonAge", (byte) this.getDragonAge());
+        tag.putInt("DragonAge", this.getDragonAge());
         try{
             if (this.getOwnerId() == null) {
                 tag.putString("OwnerUUID", "");
@@ -68,7 +70,7 @@ public class EntityDragonEgg extends LivingEntity implements IBlacklistedFromSta
     public void readAdditional(CompoundNBT tag) {
         super.readAdditional(tag);
         this.setEggType(EnumDragonEgg.values()[tag.getInt("Color")]);
-        this.setDragonAge(tag.getByte("DragonAge"));
+        this.setDragonAge(tag.getInt("DragonAge"));
         String s;
 
         if (tag.contains("OwnerUUID", 8)) {
@@ -124,8 +126,10 @@ public class EntityDragonEgg extends LivingEntity implements IBlacklistedFromSta
     @Override
     public void tick() {
         super.tick();
-        this.setAir(200);
-        getEggType().dragonType.updateEggCondition(this);
+        if (!world.isRemote()) {
+            this.setAir(200);
+            getEggType().dragonType.updateEggCondition(this);
+        }
     }
 
     @Override
@@ -154,7 +158,7 @@ public class EntityDragonEgg extends LivingEntity implements IBlacklistedFromSta
             this.entityDropItem(this.getItem().getItem(), 1);
         }
         this.remove();
-        return super.attackEntityFrom(var1, var2);
+        return true;
     }
 
     private ItemStack getItem() {

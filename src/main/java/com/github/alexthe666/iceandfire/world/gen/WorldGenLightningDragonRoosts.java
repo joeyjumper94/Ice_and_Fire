@@ -1,12 +1,12 @@
 package com.github.alexthe666.iceandfire.world.gen;
 
 import java.util.Random;
-import java.util.stream.Collectors;
 
 import com.github.alexthe666.iceandfire.IafConfig;
 import com.github.alexthe666.iceandfire.block.IafBlockRegistry;
 import com.github.alexthe666.iceandfire.entity.EntityDragonBase;
 import com.github.alexthe666.iceandfire.entity.IafEntityRegistry;
+import com.github.alexthe666.iceandfire.entity.util.HomePosition;
 import com.github.alexthe666.iceandfire.event.WorldGenUtils;
 import com.github.alexthe666.iceandfire.world.IafWorldRegistry;
 import com.mojang.serialization.Codec;
@@ -19,6 +19,7 @@ import net.minecraft.block.material.Material;
 import net.minecraft.tileentity.ChestTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.Direction;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.ISeedReader;
 import net.minecraft.world.IWorld;
@@ -30,7 +31,7 @@ import net.minecraft.world.gen.feature.NoFeatureConfig;
 public class WorldGenLightningDragonRoosts extends Feature<NoFeatureConfig> {
     private static final Direction[] HORIZONTALS = new Direction[]{Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
     private static boolean isMale;
-
+    public static ResourceLocation DRAGON_CHEST = new ResourceLocation("iceandfire", "chest/lightning_dragon_roost");
     public WorldGenLightningDragonRoosts(Codec<NoFeatureConfig> configFactoryIn) {
         super(configFactoryIn);
     }
@@ -53,15 +54,15 @@ public class WorldGenLightningDragonRoosts extends Feature<NoFeatureConfig> {
         worldIn.setBlockState(position, Blocks.AIR.getDefaultState(), 2);
         BlockPos finalPosition = position;
         if(!worldIn.isRemote()){
-        	EntityDragonBase dragon = IafEntityRegistry.LIGHTNING_DRAGON.create(worldIn.getWorld());
-        	dragon.setGender(isMale);
+            EntityDragonBase dragon = IafEntityRegistry.LIGHTNING_DRAGON.get().create(worldIn.getWorld());
+            dragon.setGender(isMale);
             dragon.enablePersistence();
             dragon.growDragon(40 + radius);
             dragon.setAgingDisabled(true);
             dragon.setHealth(dragon.getMaxHealth());
             dragon.setVariant(new Random().nextInt(4));
             dragon.setPositionAndRotation(position.getX() + 0.5, 1 + worldIn.getHeight(Heightmap.Type.WORLD_SURFACE_WG, position).getY() + 1.5, position.getZ() + 0.5, rand.nextFloat() * 360, 0);
-            dragon.homePos = position;
+            dragon.homePos = new HomePosition(position, worldIn.getWorld());
             dragon.hasHomePosition = true;
             dragon.setHunger(50);
             dragon.setQueuedToSit(true);
@@ -71,10 +72,10 @@ public class WorldGenLightningDragonRoosts extends Feature<NoFeatureConfig> {
             int j = radius;
             int k = 2;
             int l = radius;
-            float f = (float) (j + k + l) * 0.333F + 0.5F;
+            float f = (j + k + l) * 0.333F + 0.5F;
             BlockPos.getAllInBox(position.add(-j, k, -l), position.add(j, 0, l)).map(BlockPos::toImmutable).forEach(blockPos ->  {
                 int yAdd = blockPos.getY() - finalPosition.getY();
-                if (blockPos.distanceSq(finalPosition) <= (double) (f * f) && yAdd < 2 + rand.nextInt(k) && !worldIn.isAirBlock(blockPos.down())) {
+                if (blockPos.distanceSq(finalPosition) <= f * f && yAdd < 2 + rand.nextInt(k) && !worldIn.isAirBlock(blockPos.down())) {
                     if (worldIn.isAirBlock(blockPos.up()))
                         worldIn.setBlockState(blockPos, IafBlockRegistry.CRACKLED_DIRT.getDefaultState(), 2);
                     else
@@ -86,12 +87,12 @@ public class WorldGenLightningDragonRoosts extends Feature<NoFeatureConfig> {
             int j = radius;
             int k = (radius / 5);
             int l = radius;
-            float f = (float) (j + k + l) * 0.333F + 0.5F;
+            float f = (j + k + l) * 0.333F + 0.5F;
             BlockPos.getAllInBox(position.add(-j, -k, -l), position.add(j, 1, l)).map(BlockPos::toImmutable).forEach(blockPos ->  {
-                if (blockPos.distanceSq(finalPosition) < (double) (f * f)) {
+                if (blockPos.distanceSq(finalPosition) < f * f) {
                     worldIn.setBlockState(blockPos, rand.nextBoolean() ? IafBlockRegistry.CRACKLED_GRAVEL.getDefaultState() : IafBlockRegistry.CRACKLED_DIRT.getDefaultState(), 2);
                 }
-                else if (blockPos.distanceSq(finalPosition) == (double) (f * f)) {
+                else if (blockPos.distanceSq(finalPosition) == f * f) {
                     worldIn.setBlockState(blockPos, rand.nextBoolean() ? IafBlockRegistry.CRACKLED_COBBLESTONE.getDefaultState() : IafBlockRegistry.CRACKLED_COBBLESTONE.getDefaultState(), 2);
                 }
             });
@@ -101,10 +102,10 @@ public class WorldGenLightningDragonRoosts extends Feature<NoFeatureConfig> {
             int j = radius;
             int k = 2;
             int l = radius;
-            float f = (float) (j + k + l) * 0.333F + 0.5F;
+            float f = (j + k + l) * 0.333F + 0.5F;
             BlockPos up = position.up(k - 1);
             BlockPos.getAllInBox(up.add(-j, -k + 2, -l), up.add(j, k, l)).map(BlockPos::toImmutable).forEach(blockPos ->  {
-                if (blockPos.distanceSq(finalPosition) <= (double) (f * f)) {
+                if (blockPos.distanceSq(finalPosition) <= f * f) {
                     worldIn.setBlockState(blockPos, Blocks.AIR.getDefaultState(), 2);
                 }
             });
@@ -114,10 +115,10 @@ public class WorldGenLightningDragonRoosts extends Feature<NoFeatureConfig> {
             int j = radius;
             int k = (radius / 5);
             int l = radius;
-            float f = (float) (j + k + l) * 0.333F + 0.5F;
+            float f = (j + k + l) * 0.333F + 0.5F;
             BlockPos.getAllInBox(position.add(-j, -k, -l), position.add(j, k, l)).map(BlockPos::toImmutable).forEach(blockPos ->  {
-                if (blockPos.distanceSq(finalPosition) <= (double) (f * f)) {
-                    double dist = blockPos.distanceSq(finalPosition) / (double) (f * f);
+                if (blockPos.distanceSq(finalPosition) <= f * f) {
+                    double dist = blockPos.distanceSq(finalPosition) / (f * f);
                     if (!worldIn.isAirBlock(finalPosition) && rand.nextDouble() > dist * 0.5D) {
                         transformState(worldIn, blockPos, worldIn.getBlockState(blockPos));
                     }
@@ -143,7 +144,7 @@ public class WorldGenLightningDragonRoosts extends Feature<NoFeatureConfig> {
                         if (worldIn.getBlockState(height).getBlock() instanceof ChestBlock) {
                             TileEntity tileentity1 = worldIn.getTileEntity(height);
                             if (tileentity1 instanceof ChestTileEntity) {
-                                ((ChestTileEntity) tileentity1).setLootTable(WorldGenLightningDragonCave.LIGHTNINGDRAGON_CHEST, new Random().nextLong());
+                                ((ChestTileEntity) tileentity1).setLootTable(DRAGON_CHEST, new Random().nextLong());
                             }
                         }
                     }

@@ -1,13 +1,12 @@
 package com.github.alexthe666.iceandfire.client.gui;
 
-import com.github.alexthe666.iceandfire.ClientProxy;
 import com.github.alexthe666.iceandfire.IceAndFire;
+import com.github.alexthe666.iceandfire.client.ClientProxy;
 import com.github.alexthe666.iceandfire.item.IafItemRegistry;
 import com.github.alexthe666.iceandfire.message.MessageGetMyrmexHive;
 import com.github.alexthe666.iceandfire.world.gen.WorldGenMyrmexHive;
 import com.mojang.blaze3d.matrix.MatrixStack;
-import com.mojang.blaze3d.platform.GlStateManager;
-
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.button.Button;
@@ -22,20 +21,23 @@ import net.minecraft.util.text.TranslationTextComponent;
 public class GuiMyrmexAddRoom extends Screen {
     private static final ResourceLocation JUNGLE_TEXTURE = new ResourceLocation("iceandfire:textures/gui/myrmex_staff_jungle.png");
     private static final ResourceLocation DESERT_TEXTURE = new ResourceLocation("iceandfire:textures/gui/myrmex_staff_desert.png");
-    private ItemStack staff;
-    private boolean jungle;
-    private BlockPos interactPos;
-    private Direction facing;
+    private final boolean jungle;
+    private final BlockPos interactPos;
+    private final Direction facing;
 
     public GuiMyrmexAddRoom(ItemStack staff, BlockPos interactPos, Direction facing) {
         super(new TranslationTextComponent("myrmex_add_room"));
-        this.staff = staff;
         this.jungle = staff.getItem() == IafItemRegistry.MYRMEX_JUNGLE_STAFF;
         this.interactPos = interactPos;
         this.facing = facing;
         init();
     }
 
+    public static void onGuiClosed() {
+        IceAndFire.NETWORK_WRAPPER.sendToServer(new MessageGetMyrmexHive(ClientProxy.getReferedClientHive().toNBT()));
+    }
+
+    @Override
     protected void init() {
         super.init();
         this.buttons.clear();
@@ -75,15 +77,17 @@ public class GuiMyrmexAddRoom extends Screen {
 
     }
 
+    @Override
     public void renderBackground(MatrixStack ms) {
         super.renderBackground(ms);
-        GlStateManager.color4f(1.0F, 1.0F, 1.0F, 1.0F);
+        RenderSystem.color4f(1.0F, 1.0F, 1.0F, 1.0F);
         this.getMinecraft().getTextureManager().bindTexture(jungle ? JUNGLE_TEXTURE : DESERT_TEXTURE);
         int i = (this.width - 248) / 2;
         int j = (this.height - 166) / 2;
         this.blit(ms, i, j, 0, 0, 248, 166);
     }
 
+    @Override
     public void render(MatrixStack ms, int mouseX, int mouseY, float partialTicks) {
         this.renderBackground(ms);
         init();
@@ -104,10 +108,7 @@ public class GuiMyrmexAddRoom extends Screen {
 
     }
 
-    public void onGuiClosed() {
-        IceAndFire.NETWORK_WRAPPER.sendToServer(new MessageGetMyrmexHive(ClientProxy.getReferedClientHive().toNBT()));
-    }
-
+    @Override
     public boolean isPauseScreen() {
         return false;
     }

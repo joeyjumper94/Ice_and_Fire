@@ -2,13 +2,13 @@ package com.github.alexthe666.iceandfire.pathfinding.raycoms;
 /*
     All of this code is used with permission from Raycoms, one of the developers of the minecolonies project.
  */
+
 import com.github.alexthe666.iceandfire.IafConfig;
 import com.github.alexthe666.iceandfire.IceAndFire;
 import com.github.alexthe666.iceandfire.pathfinding.raycoms.pathjobs.AbstractPathJob;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.BufferBuilder;
@@ -17,7 +17,6 @@ import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.EntityRendererManager;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.entity.Entity;
-import net.minecraft.pathfinding.Path;
 import net.minecraft.util.concurrent.ThreadTaskExecutor;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Vector3d;
@@ -28,26 +27,41 @@ import net.minecraftforge.fml.LogicalSidedProvider;
 import org.lwjgl.opengl.GL11;
 
 import java.util.ConcurrentModificationException;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.*;
 
-import static com.github.alexthe666.iceandfire.pathfinding.raycoms.PathfindingConstants.debugNodeMonitor;
 
 /**
  * Static class the handles all the Pathfinding.
  */
 public final class Pathfinding {
-    private static final Set<Class<?>> loadedJobs = new CopyOnWriteArraySet<>();
     private static final BlockingQueue<Runnable> jobQueue = new LinkedBlockingDeque<>();
     private static ThreadPoolExecutor executor;
+
+    /**
+     * Set of visited nodes.
+     */
+    public static Set<Node> lastDebugNodesVisited = new HashSet<>();
+
+    /**
+     * Set of not visited nodes.
+     */
+    public static Set<Node> lastDebugNodesNotVisited  = new HashSet<>();
+
+    /**
+     * Set of nodes that belong to the chosen path.
+     */
+    public static Set<Node> lastDebugNodesPath = new HashSet<>();
 
     private Pathfinding() {
         //Hides default constructor.
     }
 
-    public static boolean isDebug(){
-        return false;
+    public static boolean isDebug() {
+        return IafConfig.pathfindingDebug;
     }
+
     /**
      * Creates a new thread pool for pathfinding jobs
      *
@@ -73,21 +87,10 @@ public final class Pathfinding {
      * Add a job to the queue for processing.
      *
      * @param job PathJob
-     * @return a Future containing the Path
      */
-    public static Future<Path> enqueue(final AbstractPathJob job) {
-        if (!loadedJobs.contains(job.getClass())) {
-            ThreadTaskExecutor<?> workqueue = LogicalSidedProvider.WORKQUEUE.get(LogicalSide.SERVER);
-            CompletableFuture<Path> result = workqueue.isOnExecutionThread() ? CompletableFuture.completedFuture(job.call()) : CompletableFuture.supplyAsync(job::call, workqueue);
-            return result.thenApply(path -> {
-                loadedJobs.add(job.getClass());
-                return path;
-            });
-        }
-        if(getExecutor().isShutdown() || getExecutor().isTerminating() || getExecutor().isTerminated()){
-            return null;
-        }
-        return getExecutor().submit(job);
+    public static void enqueue(final AbstractPathJob job)
+    {
+        job.getResult().startJob(getExecutor());
     }
 
     /**
@@ -98,7 +101,8 @@ public final class Pathfinding {
      */
     @OnlyIn(Dist.CLIENT)
     public static void debugDraw(final double frame, final MatrixStack matrixStack) {
-        if (AbstractPathJob.lastDebugNodesNotVisited == null) {
+        if (lastDebugNodesNotVisited.isEmpty() || lastDebugNodesPath.isEmpty() || lastDebugNodesVisited.isEmpty())
+        {
             return;
         }
 
@@ -117,33 +121,33 @@ public final class Pathfinding {
         RenderSystem.disableBlend();
         RenderSystem.disableLighting();
 
-        final Set<Node> debugNodesNotVisited;
-        final Set<Node> debugNodesVisited;
-        final Set<Node> debugNodesPath;
 
-        synchronized (debugNodeMonitor) {
-            debugNodesNotVisited = AbstractPathJob.lastDebugNodesNotVisited;
-            debugNodesVisited = AbstractPathJob.lastDebugNodesVisited;
-            debugNodesPath = AbstractPathJob.lastDebugNodesPath;
-        }
-
-        try {
-            for (final Node n : debugNodesNotVisited) {
+        try
+        {
+            for (final Node n : lastDebugNodesNotVisited)
+            {
                 debugDrawNode(n, 1.0F, 0F, 0F, matrixStack);
             }
 
-            for (final Node n : debugNodesVisited) {
-               debugDrawNode(n, 0F, 0F, 1.0F, matrixStack);
+            for (final Node n : lastDebugNodesVisited)
+            {
+                debugDrawNode(n, 0F, 0F, 1.0F, matrixStack);
             }
 
-            for (final Node n : debugNodesPath) {
-                if (n.isReachedByWorker()) {
+            for (final Node n : lastDebugNodesPath)
+            {
+                if (n.isReachedByWorker())
+                {
                     debugDrawNode(n, 1F, 0.4F, 0F, matrixStack);
-                } else {
+                }
+                else
+                {
                     debugDrawNode(n, 0F, 1.0F, 0F, matrixStack);
                 }
             }
-        } catch (final ConcurrentModificationException exc) {
+        }
+        catch (final ConcurrentModificationException exc)
+        {
             IceAndFire.LOGGER.catching(exc);
         }
 
@@ -289,19 +293,15 @@ public final class Pathfinding {
          */
         public static int id;
 
-
-        private static final ClassLoader classLoader;
-
-        static {
-            ThreadTaskExecutor<?> workqueue = LogicalSidedProvider.WORKQUEUE.get(LogicalSide.SERVER);
-            if (workqueue.isOnExecutionThread())
-                classLoader = Thread.currentThread().getContextClassLoader();
-            else
-                classLoader = CompletableFuture.supplyAsync(() -> Thread.currentThread().getContextClassLoader(), workqueue).join();
-        }
-
         @Override
         public Thread newThread(final Runnable runnable) {
+            ThreadTaskExecutor<?> workqueue = LogicalSidedProvider.WORKQUEUE.get(LogicalSide.SERVER);
+            ClassLoader classLoader;
+            if (workqueue.isOnExecutionThread()) {
+                classLoader = Thread.currentThread().getContextClassLoader();
+            } else {
+                classLoader = CompletableFuture.supplyAsync(() -> Thread.currentThread().getContextClassLoader(), workqueue).join();
+            }
             final Thread thread = new Thread(runnable, "Ice and Fire Pathfinding Worker #" + (id++));
             thread.setDaemon(true);
             thread.setPriority(Thread.MAX_PRIORITY);

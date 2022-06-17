@@ -1,45 +1,31 @@
 package com.github.alexthe666.iceandfire.entity;
 
-import java.util.List;
-
-import javax.annotation.Nullable;
-
 import com.github.alexthe666.citadel.animation.Animation;
 import com.github.alexthe666.citadel.animation.AnimationHandler;
 import com.github.alexthe666.citadel.animation.IAnimatedEntity;
-import com.github.alexthe666.citadel.server.entity.datatracker.EntityPropertiesHandler;
 import com.github.alexthe666.iceandfire.IafConfig;
 import com.github.alexthe666.iceandfire.IceAndFire;
 import com.github.alexthe666.iceandfire.entity.ai.AquaticAIGetInWater;
 import com.github.alexthe666.iceandfire.entity.ai.AquaticAIGetOutOfWater;
 import com.github.alexthe666.iceandfire.entity.ai.SirenAIFindWaterTarget;
 import com.github.alexthe666.iceandfire.entity.ai.SirenAIWander;
-import com.github.alexthe666.iceandfire.entity.props.SirenEntityProperties;
+import com.github.alexthe666.iceandfire.entity.props.SirenProperties;
 import com.github.alexthe666.iceandfire.entity.util.ChainBuffer;
+import com.github.alexthe666.iceandfire.entity.util.IHasCustomizableAttributes;
 import com.github.alexthe666.iceandfire.entity.util.IHearsSiren;
 import com.github.alexthe666.iceandfire.entity.util.IVillagerFear;
-import com.github.alexthe666.iceandfire.event.ServerEvents;
+import com.github.alexthe666.iceandfire.enums.EnumParticles;
 import com.github.alexthe666.iceandfire.item.IafItemRegistry;
 import com.github.alexthe666.iceandfire.message.MessageSirenSong;
 import com.github.alexthe666.iceandfire.misc.IafSoundRegistry;
 import com.github.alexthe666.iceandfire.pathfinding.PathNavigateAmphibious;
 import com.google.common.base.Predicate;
-
 import net.minecraft.block.material.Material;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.ILivingEntityData;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.MobEntity;
-import net.minecraft.entity.SpawnReason;
+import net.minecraft.entity.*;
 import net.minecraft.entity.ai.attributes.AttributeModifierMap;
 import net.minecraft.entity.ai.attributes.Attributes;
 import net.minecraft.entity.ai.controller.MovementController;
-import net.minecraft.entity.ai.goal.HurtByTargetGoal;
-import net.minecraft.entity.ai.goal.LookAtGoal;
-import net.minecraft.entity.ai.goal.LookRandomlyGoal;
-import net.minecraft.entity.ai.goal.MeleeAttackGoal;
-import net.minecraft.entity.ai.goal.NearestAttackableTargetGoal;
+import net.minecraft.entity.ai.goal.*;
 import net.minecraft.entity.merchant.villager.AbstractVillagerEntity;
 import net.minecraft.entity.monster.MonsterEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -61,10 +47,11 @@ import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.IServerWorld;
 import net.minecraft.world.World;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
-public class EntitySiren extends MonsterEntity implements IAnimatedEntity, IVillagerFear {
+import javax.annotation.Nullable;
+import java.util.List;
+
+public class EntitySiren extends MonsterEntity implements IAnimatedEntity, IVillagerFear, IHasCustomizableAttributes {
 
     public static final int SEARCH_RANGE = 32;
     public static final Predicate<Entity> SIREN_PREY = new Predicate<Entity>() {
@@ -81,7 +68,6 @@ public class EntitySiren extends MonsterEntity implements IAnimatedEntity, IVill
     private static final DataParameter<Byte> CLIMBING = EntityDataManager.createKey(EntitySiren.class, DataSerializers.BYTE);
     public static Animation ANIMATION_BITE = Animation.create(20);
     public static Animation ANIMATION_PULL = Animation.create(20);
-    @OnlyIn(Dist.CLIENT)
     public ChainBuffer tail_buffer;
     public float singProgress;
     public float swimProgress;
@@ -93,8 +79,9 @@ public class EntitySiren extends MonsterEntity implements IAnimatedEntity, IVill
     private boolean isLandNavigator;
     private int ticksAgressive;
 
-    public EntitySiren(EntityType t, World worldIn) {
+    public EntitySiren(EntityType<EntitySiren> t, World worldIn) {
         super(t, worldIn);
+        IHasCustomizableAttributes.applyAttributesForEntity(t, this);
         this.switchNavigator(true);
         this.stepHeight = 2;
         this.goalSelector.addGoal(0, new SirenAIFindWaterTarget(this));
@@ -105,13 +92,13 @@ public class EntitySiren extends MonsterEntity implements IAnimatedEntity, IVill
         this.goalSelector.addGoal(3, new MeleeAttackGoal(this, 1.0D, false));
         this.goalSelector.addGoal(6, new LookAtGoal(this, PlayerEntity.class, 8.0F, 1.0F));
         this.targetSelector.addGoal(1, new HurtByTargetGoal(this));
-        this.targetSelector.addGoal(4, new NearestAttackableTargetGoal(this, PlayerEntity.class, 0, true, false, new Predicate<PlayerEntity>() {
+        this.targetSelector.addGoal(4, new NearestAttackableTargetGoal(this, PlayerEntity.class, 10, true, false, new Predicate<PlayerEntity>() {
             @Override
             public boolean apply(@Nullable PlayerEntity entity) {
                 return EntitySiren.this.isAgressive() && !(entity.isCreative() || entity.isSpectator());
             }
         }));
-        this.targetSelector.addGoal(4, new NearestAttackableTargetGoal(this, AbstractVillagerEntity.class, 0, true, false, new Predicate<AbstractVillagerEntity>() {
+        this.targetSelector.addGoal(4, new NearestAttackableTargetGoal(this, AbstractVillagerEntity.class, 10, true, false, new Predicate<AbstractVillagerEntity>() {
             @Override
             public boolean apply(@Nullable AbstractVillagerEntity entity) {
                 return EntitySiren.this.isAgressive();
@@ -218,8 +205,8 @@ public class EntitySiren extends MonsterEntity implements IAnimatedEntity, IVill
             double d3 = MathHelper.sqrt(d0 * d0 + d2 * d2);
             float f = (float) (MathHelper.atan2(d2, d0) * (180D / Math.PI)) - 90.0F;
             float f1 = (float) (-(MathHelper.atan2(d1, d3) * (180D / Math.PI)));
-            this.getAttackTarget().rotationPitch = ServerEvents.updateRotation(this.getAttackTarget().rotationPitch, f1, 30F);
-            this.getAttackTarget().rotationYaw = ServerEvents.updateRotation(this.getAttackTarget().rotationYaw, f, 30F);
+            this.getAttackTarget().rotationPitch = updateRotation(this.getAttackTarget().rotationPitch, f1, 30F);
+            this.getAttackTarget().rotationYaw = updateRotation(this.getAttackTarget().rotationYaw, f, 30F);
         }
         if (world.isRemote) {
             tail_buffer.calculateChainSwingBuffer(40, 10, 2.5F, this);
@@ -275,8 +262,9 @@ public class EntitySiren extends MonsterEntity implements IAnimatedEntity, IVill
             swimProgress -= 0.5F;
         }
         if (!world.isRemote && !EntityGorgon.isStoneMob(this) && this.isActuallySinging()) {
-            checkForPrey();
             updateLure();
+            checkForPrey();
+
         }
         if (!world.isRemote && EntityGorgon.isStoneMob(this) && this.isSinging()) {
             this.setSinging(false);
@@ -290,7 +278,7 @@ public class EntitySiren extends MonsterEntity implements IAnimatedEntity, IVill
                     double extraX = radius * MathHelper.sin((float) (Math.PI + angle));
                     double extraY = 1.2F;
                     double extraZ = radius * MathHelper.cos(angle);
-                    IceAndFire.PROXY.spawnParticle("siren_music", this.getPosX() + extraX + this.rand.nextFloat() - 0.5, this.getPosY() + extraY + this.rand.nextFloat() - 0.5, this.getPosZ() + extraZ + this.rand.nextFloat() - 0.5, 0, 0, 0);
+                    IceAndFire.PROXY.spawnParticle(EnumParticles.Siren_Music, this.getPosX() + extraX + this.rand.nextFloat() - 0.5, this.getPosY() + extraY + this.rand.nextFloat() - 0.5, this.getPosZ() + extraZ + this.rand.nextFloat() - 0.5, 0, 0, 0);
                 }
             }
         }
@@ -327,10 +315,8 @@ public class EntitySiren extends MonsterEntity implements IAnimatedEntity, IVill
         if (this.ticksExisted % 20 == 0) {
             List<LivingEntity> entities = world.getEntitiesWithinAABB(LivingEntity.class, this.getBoundingBox().grow(50, 12, 50), SIREN_PREY);
             for (LivingEntity entity : entities) {
-                SirenEntityProperties sirenProps = EntityPropertiesHandler.INSTANCE.getProperties(entity, SirenEntityProperties.class);
-                if (!isWearingEarplugs(entity) && sirenProps != null && (!sirenProps.isCharmed || sirenProps.getSiren(world) == null)) {
-                    sirenProps.isCharmed = true;
-                    sirenProps.sirenID = this.getEntityId();
+                if (!isWearingEarplugs(entity) && (!SirenProperties.isCharmed(entity) || SirenProperties.getSiren(entity) == null)) {
+                    SirenProperties.setCharmedBy(entity, this);
                 }
             }
         }
@@ -444,6 +430,11 @@ public class EntitySiren extends MonsterEntity implements IAnimatedEntity, IVill
     }
 
     @Override
+    public AttributeModifierMap.MutableAttribute getAttributes() {
+        return bakeAttributes();
+    }
+
+    @Override
     protected void registerData() {
         super.registerData();
         this.dataManager.register(HAIR_COLOR, Integer.valueOf(0));
@@ -462,6 +453,17 @@ public class EntitySiren extends MonsterEntity implements IAnimatedEntity, IVill
         this.setHairColor(this.getRNG().nextInt(3));
         this.setSingingPose(this.getRNG().nextInt(3));
         return spawnDataIn;
+    }
+
+    public static float updateRotation(float angle, float targetAngle, float maxIncrease) {
+        float f = MathHelper.wrapDegrees(targetAngle - angle);
+        if (f > maxIncrease) {
+            f = maxIncrease;
+        }
+        if (f < -maxIncrease) {
+            f = -maxIncrease;
+        }
+        return angle + f;
     }
 
     @Override
@@ -525,7 +527,7 @@ public class EntitySiren extends MonsterEntity implements IAnimatedEntity, IVill
     }
 
     class SwimmingMoveHelper extends MovementController {
-        private EntitySiren siren = EntitySiren.this;
+        private final EntitySiren siren = EntitySiren.this;
 
         public SwimmingMoveHelper() {
             super(EntitySiren.this);

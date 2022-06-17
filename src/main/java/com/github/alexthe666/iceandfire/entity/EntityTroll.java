@@ -11,12 +11,13 @@ import com.github.alexthe666.iceandfire.IafConfig;
 import com.github.alexthe666.iceandfire.api.event.GenericGriefEvent;
 import com.github.alexthe666.iceandfire.entity.ai.TrollAIFleeSun;
 import com.github.alexthe666.iceandfire.entity.util.BlockBreakExplosion;
+import com.github.alexthe666.iceandfire.entity.util.IHasCustomizableAttributes;
 import com.github.alexthe666.iceandfire.entity.util.IHumanoid;
 import com.github.alexthe666.iceandfire.entity.util.IVillagerFear;
 import com.github.alexthe666.iceandfire.enums.EnumTroll;
 import com.github.alexthe666.iceandfire.misc.IafSoundRegistry;
-
 import com.github.alexthe666.iceandfire.world.IafWorldRegistry;
+
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.Entity;
@@ -55,11 +56,18 @@ import net.minecraft.util.SoundEvent;
 import net.minecraft.util.SoundEvents;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
-import net.minecraft.world.*;
+import net.minecraft.world.Difficulty;
+import net.minecraft.world.DifficultyInstance;
+import net.minecraft.world.GameRules;
+import net.minecraft.world.IServerWorld;
+import net.minecraft.world.IWorld;
+import net.minecraft.world.IWorldReader;
+import net.minecraft.world.World;
 import net.minecraft.world.gen.Heightmap;
+
 import net.minecraftforge.common.MinecraftForge;
 
-public class EntityTroll extends MonsterEntity implements IAnimatedEntity, IVillagerFear, IHumanoid {
+public class EntityTroll extends MonsterEntity implements IAnimatedEntity, IVillagerFear, IHumanoid, IHasCustomizableAttributes {
 
     public static final Animation ANIMATION_STRIKE_HORIZONTAL = Animation.create(20);
     public static final Animation ANIMATION_STRIKE_VERTICAL = Animation.create(20);
@@ -75,12 +83,14 @@ public class EntityTroll extends MonsterEntity implements IAnimatedEntity, IVill
     private Animation currentAnimation;
     private boolean avoidSun = true;
 
-    public EntityTroll(EntityType t, World worldIn) {
+    public EntityTroll(EntityType<EntityTroll> t, World worldIn) {
         super(t, worldIn);
+        IHasCustomizableAttributes.applyAttributesForEntity(t, this);
     }
 
     public static boolean canTrollSpawnOn(EntityType<? extends MobEntity> typeIn, IServerWorld worldIn, SpawnReason reason, BlockPos pos, Random randomIn) {
-        return worldIn.getDifficulty() != Difficulty.PEACEFUL && isValidLightLevel(worldIn, pos, randomIn) && canSpawnOn(IafEntityRegistry.TROLL, worldIn, reason, pos, randomIn);
+        return worldIn.getDifficulty() != Difficulty.PEACEFUL && isValidLightLevel(worldIn, pos, randomIn)
+            && canSpawnOn(IafEntityRegistry.TROLL.get(), worldIn, reason, pos, randomIn);
     }
 
     public static AttributeModifierMap.MutableAttribute bakeAttributes() {
@@ -97,6 +107,11 @@ public class EntityTroll extends MonsterEntity implements IAnimatedEntity, IVill
                 .createMutableAttribute(Attributes.ARMOR, 9.0D);
     }
 
+    @Override
+    public AttributeModifierMap.MutableAttribute getAttributes() {
+        return bakeAttributes();
+    }
+
     private void setAvoidSun(boolean day) {
         if (day && !avoidSun) {
             ((GroundPathNavigator) this.getNavigator()).setAvoidSun(true);
@@ -108,13 +123,15 @@ public class EntityTroll extends MonsterEntity implements IAnimatedEntity, IVill
         }
     }
 
+    @Override
     public boolean isNotColliding(IWorldReader worldIn) {
         return worldIn.checkNoEntityCollision(this);
     }
 
+    @Override
     public boolean canSpawn(IWorld worldIn, SpawnReason spawnReasonIn) {
         BlockPos pos = this.getPosition();
-        BlockPos heightAt = worldIn.getHeight(Heightmap.Type.WORLD_SURFACE, pos);
+        BlockPos heightAt = worldIn.getHeight(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, pos);
         boolean rngCheck = true;
         if (IafConfig.trollSpawnCheckChance > 0) {
             rngCheck = this.getRNG().nextInt(IafConfig.trollSpawnCheckChance) == 0;
@@ -125,6 +142,7 @@ public class EntityTroll extends MonsterEntity implements IAnimatedEntity, IVill
         return rngCheck && pos.getY() < heightAt.getY() - 10 && super.canSpawn(worldIn, spawnReasonIn);
     }
 
+    @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(1, new SwimGoal(this));
         this.goalSelector.addGoal(2, new TrollAIFleeSun(this, 1.0D));
@@ -138,6 +156,7 @@ public class EntityTroll extends MonsterEntity implements IAnimatedEntity, IVill
         setAvoidSun(true);
     }
 
+    @Override
     public boolean attackEntityAsMob(Entity entityIn) {
         if (this.getRNG().nextBoolean()) {
             this.setAnimation(ANIMATION_STRIKE_VERTICAL);
@@ -220,6 +239,7 @@ public class EntityTroll extends MonsterEntity implements IAnimatedEntity, IVill
         return super.attackEntityFrom(source, damage);
     }
 
+    @Override
     @Nullable
     protected ResourceLocation getLootTable() {
         switch (this.getTrollType()) {
@@ -233,10 +253,12 @@ public class EntityTroll extends MonsterEntity implements IAnimatedEntity, IVill
         return null;
     }
 
+    @Override
     protected int getExperiencePoints(PlayerEntity player) {
         return 15;
     }
 
+    @Override
     protected void onDeathUpdate() {
         super.onDeathUpdate();
         if (this.deathTime == 20 && !this.world.isRemote) {
@@ -296,6 +318,7 @@ public class EntityTroll extends MonsterEntity implements IAnimatedEntity, IVill
 
     }
 
+    @Override
     public void livingTick() {
         super.livingTick();
         if (world.getDifficulty() == Difficulty.PEACEFUL && this.getAttackTarget() instanceof PlayerEntity) {
@@ -319,7 +342,7 @@ public class EntityTroll extends MonsterEntity implements IAnimatedEntity, IVill
         setAvoidSun(this.world.isDaytime());
         if (this.world.isDaytime() && !this.world.isRemote) {
             float f = this.getBrightness();
-            BlockPos blockpos = this.getRidingEntity() instanceof BoatEntity ? (new BlockPos(this.getPosX(), (double) Math.round(this.getPosY()), this.getPosZ())).up() : new BlockPos(this.getPosX(), (double) Math.round(this.getPosY()), this.getPosZ());
+            BlockPos blockpos = this.getRidingEntity() instanceof BoatEntity ? (new BlockPos(this.getPosX(), Math.round(this.getPosY()), this.getPosZ())).up() : new BlockPos(this.getPosX(), Math.round(this.getPosY()), this.getPosZ());
             if (f > 0.5F && this.world.canSeeSky(blockpos)) {
                 this.setMotion(0, 0, 0);
                 this.setAnimation(NO_ANIMATION);
@@ -340,8 +363,8 @@ public class EntityTroll extends MonsterEntity implements IAnimatedEntity, IVill
             }
         }
         if (this.getAnimation() == ANIMATION_STRIKE_VERTICAL && this.getAnimationTick() == 10) {
-            float weaponX = (float) (getPosX() + 1.9F * Math.cos((renderYawOffset + 90) * Math.PI / 180));
-            float weaponZ = (float) (getPosZ() + 1.9F * Math.sin((renderYawOffset + 90) * Math.PI / 180));
+            float weaponX = (float) (getPosX() + 1.9F * MathHelper.cos((float) ((renderYawOffset + 90) * Math.PI / 180)));
+            float weaponZ = (float) (getPosZ() + 1.9F * MathHelper.sin((float) ((renderYawOffset + 90) * Math.PI / 180)));
             float weaponY = (float) (getPosY() + (0.2F));
             BlockState state = world.getBlockState(new BlockPos(weaponX, weaponY - 1, weaponZ));
             for (int i = 0; i < 20; i++) {
@@ -382,10 +405,9 @@ public class EntityTroll extends MonsterEntity implements IAnimatedEntity, IVill
                 this.setAnimation(ANIMATION_STRIKE_VERTICAL);
             }
             if (this.getAnimation() == ANIMATION_STRIKE_VERTICAL && this.getAnimationTick() == 10) {
-                float weaponX = (float) (getPosX() + 1.9F * Math.cos((renderYawOffset + 90) * Math.PI / 180));
-                float weaponZ = (float) (getPosZ() + 1.9F * Math.sin((renderYawOffset + 90) * Math.PI / 180));
+                float weaponX = (float) (getPosX() + 1.9F * MathHelper.cos((float) ((renderYawOffset + 90) * Math.PI / 180)));
+                float weaponZ = (float) (getPosZ() + 1.9F * MathHelper.sin((float) ((renderYawOffset + 90) * Math.PI / 180)));
                 float weaponY = (float) (getPosY() + (this.getEyeHeight() / 2));
-                BlockState state = world.getBlockState(new BlockPos(weaponX, weaponY, weaponZ));
                 BlockBreakExplosion explosion = new BlockBreakExplosion(world, this, weaponX, weaponY, weaponZ, 1F + this.getRNG().nextFloat());
                 if (!MinecraftForge.EVENT_BUS.post(new GenericGriefEvent(this, weaponX, weaponY, weaponZ))) {
                     explosion.doExplosionA();
@@ -406,6 +428,7 @@ public class EntityTroll extends MonsterEntity implements IAnimatedEntity, IVill
         AnimationHandler.INSTANCE.updateAnimations(this);
     }
 
+    @Override
     public void playAmbientSound() {
         if (this.getAnimation() == this.NO_ANIMATION) {
             this.setAnimation(ANIMATION_SPEAK);
@@ -413,6 +436,7 @@ public class EntityTroll extends MonsterEntity implements IAnimatedEntity, IVill
         super.playAmbientSound();
     }
 
+    @Override
     protected void playHurtSound(DamageSource source) {
         if (this.getAnimation() == this.NO_ANIMATION) {
             this.setAnimation(ANIMATION_SPEAK);
@@ -440,16 +464,19 @@ public class EntityTroll extends MonsterEntity implements IAnimatedEntity, IVill
         currentAnimation = animation;
     }
 
+    @Override
     @Nullable
     protected SoundEvent getAmbientSound() {
         return IafSoundRegistry.TROLL_IDLE;
     }
 
+    @Override
     @Nullable
     protected SoundEvent getHurtSound(DamageSource source) {
         return IafSoundRegistry.TROLL_HURT;
     }
 
+    @Override
     @Nullable
     protected SoundEvent getDeathSound() {
         return IafSoundRegistry.TROLL_DIE;

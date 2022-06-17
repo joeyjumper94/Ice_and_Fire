@@ -1,24 +1,18 @@
 package com.github.alexthe666.iceandfire.client.texture;
 
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.List;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import com.mojang.blaze3d.systems.RenderSystem;
-
 import net.minecraft.client.renderer.texture.NativeImage;
 import net.minecraft.client.renderer.texture.Texture;
 import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.resources.IResource;
 import net.minecraft.resources.IResourceManager;
 import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-@OnlyIn(Dist.CLIENT)
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.List;
 public class ArrayLayeredTexture extends Texture {
     private static final Logger LOGGER = LogManager.getLogger();
     public final List<String> layeredTextureNames;
@@ -27,6 +21,7 @@ public class ArrayLayeredTexture extends Texture {
         this.layeredTextureNames = textureNames;
     }
 
+    @Override
     public void loadTexture(IResourceManager manager) {
         Iterator<String> iterator = this.layeredTextureNames.iterator();
         String s = iterator.next();
@@ -62,16 +57,16 @@ public class ArrayLayeredTexture extends Texture {
 
     }
 
-    public void blendPixel(NativeImage nativeimage, NativeImage nativeimage1, int xIn, int yIn, int colIn) {
+    public static void blendPixel(NativeImage nativeimage, NativeImage nativeimage1, int xIn, int yIn, int colIn) {
         int i = nativeimage.getPixelRGBA(xIn, yIn);
-        float f = (float) NativeImage.getAlpha(colIn) / 255.0F;
-        float f1 = (float) NativeImage.getBlue(colIn) / 255.0F;
-        float f2 = (float) NativeImage.getGreen(colIn) / 255.0F;
-        float f3 = (float) NativeImage.getRed(colIn) / 255.0F;
-        float f4 = (float) NativeImage.getAlpha(i) / 255.0F;
-        float f5 = (float) NativeImage.getBlue(i) / 255.0F;
-        float f6 = (float) NativeImage.getGreen(i) / 255.0F;
-        float f7 = (float) NativeImage.getRed(i) / 255.0F;
+        float f = NativeImage.getAlpha(colIn) / 255.0F;
+        float f1 = NativeImage.getBlue(colIn) / 255.0F;
+        float f2 = NativeImage.getGreen(colIn) / 255.0F;
+        float f3 = NativeImage.getRed(colIn) / 255.0F;
+        float f4 = NativeImage.getAlpha(i) / 255.0F;
+        float f5 = NativeImage.getBlue(i) / 255.0F;
+        float f6 = NativeImage.getGreen(i) / 255.0F;
+        float f7 = NativeImage.getRed(i) / 255.0F;
         float f8 = 1.0F - f;
         float f9 = f * f + f4 * f8;
         float f10 = f1 * f + f5 * f8;

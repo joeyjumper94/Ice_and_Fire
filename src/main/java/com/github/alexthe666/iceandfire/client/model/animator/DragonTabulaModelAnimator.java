@@ -2,7 +2,6 @@ package com.github.alexthe666.iceandfire.client.model.animator;
 
 import com.github.alexthe666.citadel.client.model.AdvancedModelBox;
 import com.github.alexthe666.citadel.client.model.ITabulaModelAnimator;
-import com.github.alexthe666.citadel.client.model.ModelAnimator;
 import com.github.alexthe666.citadel.client.model.TabulaModel;
 import com.github.alexthe666.iceandfire.client.model.util.EnumDragonPoses;
 import com.github.alexthe666.iceandfire.client.model.util.LegArticulator;
@@ -28,7 +27,7 @@ public abstract class DragonTabulaModelAnimator<T extends EntityDragonBase> exte
     }
 
     public void init(TabulaModel model) {
-        neckParts = new AdvancedModelBox[]{model.getCube("Neck1"), model.getCube("Neck2"), model.getCube("Neck3"), model.getCube("Neck3"), model.getCube("Head")};
+        neckParts = new AdvancedModelBox[]{model.getCube("Neck1"), model.getCube("Neck2"), model.getCube("Neck3"), model.getCube("Head")};
         tailParts = new AdvancedModelBox[]{model.getCube("Tail1"), model.getCube("Tail2"), model.getCube("Tail3"), model.getCube("Tail4")};
         tailPartsWBody = new AdvancedModelBox[]{model.getCube("BodyLower"), model.getCube("Tail1"), model.getCube("Tail2"), model.getCube("Tail3"), model.getCube("Tail4")};
         toesPartsL = new AdvancedModelBox[]{model.getCube("ToeL1"), model.getCube("ToeL2"), model.getCube("ToeL3")};
@@ -81,6 +80,9 @@ public abstract class DragonTabulaModelAnimator<T extends EntityDragonBase> exte
         float degree_idle = entity.isSleeping() ? 0.25F : 0.5F;
         float degree_fly = 0.5F;
         if (!entity.isAIDisabled()) {
+            if (entity.getAnimation() != EntityDragonBase.ANIMATION_SHAKEPREY || entity.getAnimation() != EntityDragonBase.ANIMATION_ROAR) {
+                model.faceTarget((float) Math.toRadians(rotationYaw), (float) Math.toRadians(rotationPitch), 2, neckParts);
+            }
             if (!walking) {
                 model.bob(model.getCube("BodyUpper"), -speed_fly, degree_fly * 5, false, ageInTicks, 1);
                 model.walk(model.getCube("BodyUpper"), -speed_fly, degree_fly * 0.1F, false, 0, 0, ageInTicks, 1);
@@ -108,9 +110,7 @@ public abstract class DragonTabulaModelAnimator<T extends EntityDragonBase> exte
             model.bob(model.getCube("ThighL"), speed_idle, -degree_idle * 1.3F, false, ageInTicks, 1);
             model.bob(model.getCube("armR1"), speed_idle, -degree_idle * 1.3F, false, ageInTicks, 1);
             model.bob(model.getCube("armL1"), speed_idle, -degree_idle * 1.3F, false, ageInTicks, 1);
-            if (entity.getAnimation() != EntityDragonBase.ANIMATION_SHAKEPREY || entity.getAnimation() != EntityDragonBase.ANIMATION_ROAR) {
-                model.faceTarget(rotationYaw, rotationPitch, 4, neckParts);
-            }
+
             if (entity.isActuallyBreathingFire()) {
                 float speed_shake = 0.7F;
                 float degree_shake = 0.1F;
@@ -119,7 +119,7 @@ public abstract class DragonTabulaModelAnimator<T extends EntityDragonBase> exte
             }
         }
         if (!entity.isModelDead()) {
-            if (entity.turn_buffer != null && !(entity.isBeingRidden() && !entity.isPassenger() && entity.isBreathingFire())) {
+            if (entity.turn_buffer != null && !entity.isBeingRidden() && !entity.isPassenger() && entity.isBreathingFire()) {
                 entity.turn_buffer.applyChainSwingBuffer(neckParts);
             }
             if (entity.tail_buffer != null && !entity.isPassenger()) {
@@ -161,17 +161,26 @@ public abstract class DragonTabulaModelAnimator<T extends EntityDragonBase> exte
             float x = currPositionCube.rotateAngleX;
             float y = currPositionCube.rotateAngleY;
             float z = currPositionCube.rotateAngleZ;
-            if (isWing(model, cube) && (entity.getAnimation() == EntityDragonBase.ANIMATION_WINGBLAST || entity.getAnimation() == EntityDragonBase.ANIMATION_EPIC_ROAR)) {
+            if (isHorn(cube) || isWing(model, cube) && (entity.getAnimation() == EntityDragonBase.ANIMATION_WINGBLAST || entity.getAnimation() == EntityDragonBase.ANIMATION_EPIC_ROAR)) {
                 this.addToRotateAngle(cube, limbSwingAmount, walkPart.rotateAngleX, walkPart.rotateAngleY, walkPart.rotateAngleZ);
             } else {
                 this.addToRotateAngle(cube, limbSwingAmount, prevX + deltaTicks * distance(prevX, x), prevY + deltaTicks * distance(prevY, y), prevZ + deltaTicks * distance(prevZ, z));
             }
         }
         if (entity.modelDeadProgress > 0.0F) {
-            TabulaModel customPose = customPose(entity);
-            TabulaModel pose = customPose == null ? getModel(EnumDragonPoses.DEAD) : customPose;
+            // TODO: Figure out what's up with custom poses
+            // DON'T use this in it's current state since it heavily effects render performance due to the fact that
+            // custom poses aren't being used right now
+            // TabulaModel customPose = customPose(entity);
+            TabulaModel pose = getModel(EnumDragonPoses.DEAD);
             if (!isRotationEqual(cube, pose.getCube(cube.boxName))) {
                 transitionTo(cube, pose.getCube(cube.boxName), entity.prevModelDeadProgress + (entity.modelDeadProgress - entity.prevModelDeadProgress) * Minecraft.getInstance().getRenderPartialTicks(), 20, cube.boxName.equals("ThighR") || cube.boxName.equals("ThighL"));
+            }
+            //Ugly hack to make sure ice dragon models are touching the ground when dead
+            if (this instanceof IceDragonTabulaModelAnimator){
+                if (cube.boxName.equals("BodyUpper")) {
+                    cube.rotationPointY += 0.35F * MathHelper.lerp(partialTick, entity.prevModelDeadProgress, entity.modelDeadProgress);
+                }
             }
         }
         if (entity.sleepProgress > 0.0F) {
@@ -197,7 +206,7 @@ public abstract class DragonTabulaModelAnimator<T extends EntityDragonBase> exte
             }
         }
         if (entity.ridingProgress > 0.0F) {
-            if (!isRotationEqual(cube, getModel(EnumDragonPoses.SIT_ON_PLAYER_POSE).getCube(cube.boxName))) {
+            if (!isHorn(cube) && !isRotationEqual(cube, getModel(EnumDragonPoses.SIT_ON_PLAYER_POSE).getCube(cube.boxName))) {
                 transitionTo(cube, getModel(EnumDragonPoses.SIT_ON_PLAYER_POSE).getCube(cube.boxName), MathHelper.lerp(partialTick, entity.prevAnimationProgresses[5], entity.ridingProgress), 20, false);
                 if (cube.boxName.equals("BodyUpper")) {
                     cube.rotationPointZ += ((-12F - cube.rotationPointZ) / 20) * MathHelper.lerp(partialTick, entity.prevAnimationProgresses[5], entity.ridingProgress);
@@ -354,12 +363,12 @@ public abstract class DragonTabulaModelAnimator<T extends EntityDragonBase> exte
         //Wingblast
         if (model.llibAnimator.setAnimation(T.ANIMATION_WINGBLAST)) {
             model.llibAnimator.startKeyframe(5);
-            moveToPose(model, getModel(EnumDragonPoses.WING_BLAST3));
-            model.llibAnimator.move(modelCubeBodyUpper, 0, -4F, 0);
+            moveToPose(model, getModel(EnumDragonPoses.WING_BLAST1));
+            model.llibAnimator.move(modelCubeBodyUpper, 0, 0, 0);
             model.llibAnimator.endKeyframe();
             model.llibAnimator.startKeyframe(5);
-            moveToPose(model, getModel(EnumDragonPoses.WING_BLAST4));
-            model.llibAnimator.move(modelCubeBodyUpper, 0, -4F, 0);
+            moveToPose(model, getModel(EnumDragonPoses.WING_BLAST2));
+            model.llibAnimator.move(modelCubeBodyUpper, 0, -2F, 0);
             model.llibAnimator.endKeyframe();
             model.llibAnimator.startKeyframe(5);
             moveToPose(model, getModel(EnumDragonPoses.WING_BLAST3));
@@ -379,7 +388,7 @@ public abstract class DragonTabulaModelAnimator<T extends EntityDragonBase> exte
             model.llibAnimator.endKeyframe();
             model.llibAnimator.startKeyframe(5);
             moveToPose(model, getModel(EnumDragonPoses.WING_BLAST7));
-            model.llibAnimator.move(modelCubeBodyUpper, 0, -4F, 0);
+            model.llibAnimator.move(modelCubeBodyUpper, 0, -2F, 0);
             model.llibAnimator.endKeyframe();
             model.llibAnimator.resetKeyframe(10);
         }
@@ -419,6 +428,27 @@ public abstract class DragonTabulaModelAnimator<T extends EntityDragonBase> exte
             model.llibAnimator.move(modelCubeBodyUpper, 0, -6.8F, 0);
             model.llibAnimator.endKeyframe();
             model.llibAnimator.resetKeyframe(10);
+        }
+        // EATING
+        if (model.llibAnimator.setAnimation(T.ANIMATION_EAT)) {
+            model.llibAnimator.startKeyframe(5);
+            this.rotate(model.llibAnimator, model.getCube("Neck1"), 18 , 0,0);
+            this.rotate(model.llibAnimator, model.getCube("Neck2"), 18 , 0,0);
+            model.llibAnimator.endKeyframe();
+            //CODE from speak
+            model.llibAnimator.startKeyframe(5);
+            this.rotate(model.llibAnimator, modelCubeJaw, 18, 0, 0);
+            model.llibAnimator.move(modelCubeJaw, 0, 0, 0.2F);
+            model.llibAnimator.endKeyframe();
+            model.llibAnimator.setStaticKeyframe(5);
+            model.llibAnimator.startKeyframe(5);
+            this.rotate(model.llibAnimator, modelCubeJaw, 18, 0, 0);
+            model.llibAnimator.move(modelCubeJaw, 0, 0, 0.2F);
+            model.llibAnimator.endKeyframe();
+            model.llibAnimator.startKeyframe(5);
+            this.rotate(model.llibAnimator, model.getCube("Neck1"), -18 , 0,0);
+            this.rotate(model.llibAnimator, model.getCube("Neck2"), -18 , 0,0);
+            model.llibAnimator.endKeyframe();
         }
     }
 }

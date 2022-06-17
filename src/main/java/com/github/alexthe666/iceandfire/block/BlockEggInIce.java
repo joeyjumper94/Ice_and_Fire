@@ -43,33 +43,22 @@ public class BlockEggInIce extends ContainerBlock {
         return new TileEntityEggInIce();
     }
 
-    public Item getItem(World worldIn, BlockPos pos) {
-        return Item.getItemFromBlock(Blocks.ICE);
-    }
-
     public BlockRenderType getRenderType(BlockState state) {
         return BlockRenderType.MODEL;
     }
 
     @Override
     public void harvestBlock(World worldIn, PlayerEntity player, BlockPos pos, BlockState state, TileEntity te, ItemStack stack) {
+        player.addStat(Stats.BLOCK_MINED.get(this));
+        player.addExhaustion(0.005F);
+    }
+    public void onBlockHarvested(World worldIn, BlockPos pos, BlockState state, PlayerEntity player) {
         if (worldIn.getTileEntity(pos) != null) {
             if (worldIn.getTileEntity(pos) instanceof TileEntityEggInIce) {
                 TileEntityEggInIce tile = (TileEntityEggInIce) worldIn.getTileEntity(pos);
                 tile.spawnEgg();
             }
         }
-        player.addStat(Stats.BLOCK_MINED.get(this));
-        player.addExhaustion(0.005F);
     }
 
-    @SuppressWarnings("deprecation")
-    public boolean isOpaqueCube(BlockState blockstate) {
-        return false;
-    }
-
-    @SuppressWarnings("deprecation")
-    public boolean isFullCube(BlockState blockstate) {
-        return false;
-    }
 }

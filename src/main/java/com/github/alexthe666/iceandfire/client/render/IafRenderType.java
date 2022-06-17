@@ -3,17 +3,13 @@ package com.github.alexthe666.iceandfire.client.render;
 import com.github.alexthe666.iceandfire.client.render.tile.RenderDreadPortal;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-
 import net.minecraft.client.renderer.RenderState;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.renderer.vertex.VertexFormat;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.Util;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-
-import net.minecraft.client.renderer.RenderState.TextureState;
+import org.lwjgl.opengl.GL11;
 
 public class IafRenderType extends RenderType {
 
@@ -61,13 +57,18 @@ public class IafRenderType extends RenderType {
         return makeType("stone_entity_type", DefaultVertexFormats.ENTITY, 7, 256, rendertype$state);
     }
 
+    public static RenderType getIce(ResourceLocation locationIn) {
+        TextureState lvt_1_1_ = new TextureState(locationIn, false, false);
+        return makeType("ice_texture", DefaultVertexFormats.ENTITY, GL11.GL_QUADS, 256, false, true, RenderType.State.getBuilder().texture(lvt_1_1_).transparency(TRANSLUCENT_TRANSPARENCY).diffuseLighting(DIFFUSE_LIGHTING_ENABLED).alpha(DEFAULT_ALPHA).cull(CULL_ENABLED).lightmap(LIGHTMAP_ENABLED).overlay(OVERLAY_ENABLED).build(true));
+    }
+
     public static RenderType getStoneCrackRenderType(ResourceLocation crackTex, float xSize, float ySize) {
         RenderState.TextureState renderstate$texturestate = new RenderState.TextureState(crackTex, false, false);
         RenderType.State rendertype$state = RenderType.State.getBuilder().texture(renderstate$texturestate).texturing(new StoneTexturingState(crackTex, xSize, ySize)).diffuseLighting(DIFFUSE_LIGHTING_ENABLED).alpha(RenderState.HALF_ALPHA).transparency(TRANSLUCENT_TRANSPARENCY).depthTest(DEPTH_EQUAL).cull(CULL_DISABLED).lightmap(LIGHTMAP_ENABLED).overlay(OVERLAY_ENABLED).build(false);
         return makeType("stone_entity_type_crack", DefaultVertexFormats.ENTITY, 7, 256, rendertype$state);
     }
 
-    @OnlyIn(Dist.CLIENT)
+
     public static final class StoneTexturingState extends RenderState.TexturingState {
         private final float xSize;
         private final float ySize;
@@ -103,7 +104,7 @@ public class IafRenderType extends RenderType {
         }
     }
 
-    @OnlyIn(Dist.CLIENT)
+
     public static final class DreadlandsPortalTexturingState extends RenderState.TexturingState {
         private final int iteration;
 

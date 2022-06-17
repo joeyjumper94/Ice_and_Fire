@@ -14,6 +14,7 @@ import com.github.alexthe666.iceandfire.entity.ai.PixieAISteal;
 import com.github.alexthe666.iceandfire.entity.ai.PixieAIMoveRandom;
 import com.github.alexthe666.iceandfire.entity.ai.PixieAIEnterHouse;
 import com.github.alexthe666.iceandfire.entity.tile.TileEntityPixieHouse;
+import com.github.alexthe666.iceandfire.enums.EnumParticles;
 import com.github.alexthe666.iceandfire.message.MessageUpdatePixieHouse;
 import com.github.alexthe666.iceandfire.misc.IafSoundRegistry;
 import com.google.common.base.Predicate;
@@ -65,7 +66,7 @@ public class EntityPixie extends TameableEntity {
 
     public static final float[][] PARTICLE_RGB = new float[][]{new float[]{1F, 0.752F, 0.792F}, new float[]{0.831F, 0.662F, 1F}, new float[]{0.513F, 0.843F, 1F}, new float[]{0.654F, 0.909F, 0.615F}, new float[]{0.996F, 0.788F, 0.407F}};
     private static final DataParameter<Integer> COLOR = EntityDataManager.createKey(EntityPixie.class, DataSerializers.VARINT);
-    private static final DataParameter<Integer> COMMAND = EntityDataManager.createKey(EntityHippogryph.class, DataSerializers.VARINT);
+    private static final DataParameter<Integer> COMMAND = EntityDataManager.createKey(EntityPixie.class, DataSerializers.VARINT);
 
     public static final int STEAL_COOLDOWN = 3000;
 
@@ -221,7 +222,7 @@ public class EntityPixie extends TameableEntity {
 
                 return ActionResultType.SUCCESS;
             }
-        } else if (player.getHeldItem(hand).getItem() == Item.getItemFromBlock(IafBlockRegistry.JAR_EMPTY) && !this.isTamed()) {
+        } else if (player.getHeldItem(hand).getItem() == IafBlockRegistry.JAR_EMPTY.asItem() && !this.isTamed()) {
             if (!player.isCreative()) {
                 player.getHeldItem(hand).shrink(1);
             }
@@ -350,7 +351,7 @@ public class EntityPixie extends TameableEntity {
         } else {
         }
         if (world.isRemote) {
-            IceAndFire.PROXY.spawnParticle("if_pixie", this.getPosX() + (double) (this.rand.nextFloat() * this.getWidth() * 2F) - (double) this.getWidth(), this.getPosY() + (double) (this.rand.nextFloat() * this.getHeight()), this.getPosZ() + (double) (this.rand.nextFloat() * this.getWidth() * 2F) - (double) this.getWidth(), PARTICLE_RGB[this.getColor()][0], PARTICLE_RGB[this.getColor()][1], PARTICLE_RGB[this.getColor()][2]);
+            IceAndFire.PROXY.spawnParticle(EnumParticles.If_Pixie, this.getPosX() + (double) (this.rand.nextFloat() * this.getWidth() * 2F) - (double) this.getWidth(), this.getPosY() + (double) (this.rand.nextFloat() * this.getHeight()), this.getPosZ() + (double) (this.rand.nextFloat() * this.getWidth() * 2F) - (double) this.getWidth(), PARTICLE_RGB[this.getColor()][0], PARTICLE_RGB[this.getColor()][1], PARTICLE_RGB[this.getColor()][2]);
         }
         if (ticksUntilHouseAI > 0) {
             ticksUntilHouseAI--;

@@ -1,12 +1,9 @@
 package com.github.alexthe666.iceandfire.entity;
 
-import java.util.Random;
-
-import javax.annotation.Nullable;
-
 import com.github.alexthe666.citadel.animation.Animation;
 import com.github.alexthe666.citadel.animation.AnimationHandler;
 import com.github.alexthe666.citadel.animation.IAnimatedEntity;
+import com.github.alexthe666.iceandfire.IafConfig;
 import com.github.alexthe666.iceandfire.IceAndFire;
 import com.github.alexthe666.iceandfire.entity.ai.DreadAITargetNonDread;
 import com.github.alexthe666.iceandfire.entity.ai.DreadLichAIStrife;
@@ -14,30 +11,18 @@ import com.github.alexthe666.iceandfire.entity.util.DragonUtils;
 import com.github.alexthe666.iceandfire.entity.util.IAnimalFear;
 import com.github.alexthe666.iceandfire.entity.util.IDreadMob;
 import com.github.alexthe666.iceandfire.entity.util.IVillagerFear;
+import com.github.alexthe666.iceandfire.enums.EnumParticles;
 import com.github.alexthe666.iceandfire.item.IafItemRegistry;
 import com.github.alexthe666.iceandfire.misc.IafSoundRegistry;
 import com.github.alexthe666.iceandfire.world.IafWorldRegistry;
 import com.google.common.base.Predicate;
-
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.ILivingEntityData;
-import net.minecraft.entity.IRangedAttackMob;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.MobEntity;
-import net.minecraft.entity.SpawnReason;
+import net.minecraft.entity.*;
 import net.minecraft.entity.ai.attributes.AttributeModifierMap;
 import net.minecraft.entity.ai.attributes.Attributes;
-import net.minecraft.entity.ai.goal.HurtByTargetGoal;
-import net.minecraft.entity.ai.goal.LookAtGoal;
-import net.minecraft.entity.ai.goal.LookRandomlyGoal;
-import net.minecraft.entity.ai.goal.MeleeAttackGoal;
-import net.minecraft.entity.ai.goal.NearestAttackableTargetGoal;
-import net.minecraft.entity.ai.goal.SwimGoal;
-import net.minecraft.entity.ai.goal.WaterAvoidingRandomWalkingGoal;
+import net.minecraft.entity.ai.goal.*;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.EquipmentSlotType;
 import net.minecraft.item.ItemStack;
@@ -58,6 +43,9 @@ import net.minecraft.world.IServerWorld;
 import net.minecraft.world.IWorld;
 import net.minecraft.world.World;
 
+import javax.annotation.Nullable;
+import java.util.Random;
+
 public class EntityDreadLich extends EntityDreadMob implements IAnimatedEntity, IVillagerFear, IAnimalFear, IRangedAttackMob {
 
     private static final DataParameter<Integer> VARIANT = EntityDataManager.createKey(EntityDreadLich.class, DataSerializers.VARINT);
@@ -71,15 +59,16 @@ public class EntityDreadLich extends EntityDreadMob implements IAnimatedEntity, 
     private int fireCooldown = 0;
     private int minionCooldown = 0;
 
-    public EntityDreadLich(EntityType type, World worldIn) {
+    public EntityDreadLich(EntityType<? extends EntityDreadMob> type, World worldIn) {
         super(type, worldIn);
     }
 
     public static boolean canLichSpawnOn(EntityType<? extends MobEntity> typeIn, IWorld worldIn, SpawnReason reason, BlockPos pos, Random randomIn) {
         BlockPos blockpos = pos.down();
-        return reason == SpawnReason.SPAWNER || worldIn.getBlockState(blockpos).canEntitySpawn(worldIn, blockpos, typeIn) && randomIn.nextInt(40) == 0;
+        return reason == SpawnReason.SPAWNER || worldIn.getBlockState(blockpos).canEntitySpawn(worldIn, blockpos, typeIn) && randomIn.nextInt(IafConfig.lichSpawnChance) == 0;
     }
 
+    @Override
     public boolean canSpawn(IWorld worldIn, SpawnReason spawnReasonIn) {
         if(worldIn instanceof IServerWorld && !IafWorldRegistry.isDimensionListedForMobs((IServerWorld)world)){
             return false;
@@ -87,6 +76,7 @@ public class EntityDreadLich extends EntityDreadMob implements IAnimatedEntity, 
         return super.canSpawn(worldIn, spawnReasonIn);
     }
 
+    @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(1, new SwimGoal(this));
         this.goalSelector.addGoal(5, new WaterAvoidingRandomWalkingGoal(this, 1.0D));
@@ -100,6 +90,7 @@ public class EntityDreadLich extends EntityDreadMob implements IAnimatedEntity, 
             }
         }));
         this.targetSelector.addGoal(3, new DreadAITargetNonDread(this, LivingEntity.class, false, new Predicate<LivingEntity>() {
+            @Override
             public boolean apply(LivingEntity entity) {
                 return entity instanceof LivingEntity && DragonUtils.canHostilesTarget(entity);
             }
@@ -128,13 +119,14 @@ public class EntityDreadLich extends EntityDreadMob implements IAnimatedEntity, 
         this.dataManager.register(MINION_COUNT, Integer.valueOf(0));
     }
 
+    @Override
     public void livingTick() {
         super.livingTick();
         if (this.getAnimation() == ANIMATION_SPAWN && this.getAnimationTick() < 30) {
             BlockState belowBlock = world.getBlockState(this.getPosition().down());
             if (belowBlock.getBlock() != Blocks.AIR) {
                 for (int i = 0; i < 5; i++) {
-                    this.world.addParticle(new BlockParticleData(ParticleTypes.BLOCK, belowBlock), this.getPosX() + (double) (this.rand.nextFloat() * this.getWidth() * 2.0F) - (double) this.getWidth(), this.getBoundingBox().minY, this.getPosZ() + (double) (this.rand.nextFloat() * this.getWidth() * 2.0F) - (double) this.getWidth(), this.rand.nextGaussian() * 0.02D, this.rand.nextGaussian() * 0.02D, this.rand.nextGaussian() * 0.02D);
+                    this.world.addParticle(new BlockParticleData(ParticleTypes.BLOCK, belowBlock), this.getPosX() + this.rand.nextFloat() * this.getWidth() * 2.0F - this.getWidth(), this.getBoundingBox().minY, this.getPosZ() + this.rand.nextFloat() * this.getWidth() * 2.0F - this.getWidth(), this.rand.nextGaussian() * 0.02D, this.rand.nextGaussian() * 0.02D, this.rand.nextGaussian() * 0.02D);
                 }
             }
             this.setMotion(0, this.getMotion().y, this.getMotion().z);
@@ -144,11 +136,11 @@ public class EntityDreadLich extends EntityDreadMob implements IAnimatedEntity, 
             double d0 = 0;
             double d1 = 0;
             double d2 = 0;
-            float f = this.renderYawOffset * 0.017453292F + MathHelper.cos((float) this.ticksExisted * 0.6662F) * 0.25F;
+            float f = this.renderYawOffset * 0.017453292F + MathHelper.cos(this.ticksExisted * 0.6662F) * 0.25F;
             float f1 = MathHelper.cos(f);
             float f2 = MathHelper.sin(f);
-            IceAndFire.PROXY.spawnParticle("dread_torch", this.getPosX() + (double) f1 * 0.6D, this.getPosY() + 1.8D, this.getPosZ() + (double) f2 * 0.6D, d0, d1, d2);
-            IceAndFire.PROXY.spawnParticle("dread_torch", this.getPosX() - (double) f1 * 0.6D, this.getPosY() + 1.8D, this.getPosZ() - (double) f2 * 0.6D, d0, d1, d2);
+            IceAndFire.PROXY.spawnParticle(EnumParticles.Dread_Torch, this.getPosX() + (double) f1 * 0.6D, this.getPosY() + 1.8D, this.getPosZ() + (double) f2 * 0.6D, d0, d1, d2);
+            IceAndFire.PROXY.spawnParticle(EnumParticles.Dread_Torch, this.getPosX() - (double) f1 * 0.6D, this.getPosY() + 1.8D, this.getPosZ() - (double) f2 * 0.6D, d0, d1, d2);
         }
         if (fireCooldown > 0) {
             fireCooldown--;
@@ -159,11 +151,13 @@ public class EntityDreadLich extends EntityDreadMob implements IAnimatedEntity, 
         AnimationHandler.INSTANCE.updateAnimations(this);
     }
 
+    @Override
     protected void setEquipmentBasedOnDifficulty(DifficultyInstance difficulty) {
         super.setEquipmentBasedOnDifficulty(difficulty);
         this.setItemStackToSlot(EquipmentSlotType.MAINHAND, new ItemStack(IafItemRegistry.LICH_STAFF));
     }
 
+    @Override
     @Nullable
     public ILivingEntityData onInitialSpawn(IServerWorld worldIn, DifficultyInstance difficultyIn, SpawnReason reason, @Nullable ILivingEntityData spawnDataIn, @Nullable CompoundNBT dataTag) {
         ILivingEntityData data = super.onInitialSpawn(worldIn, difficultyIn, reason, spawnDataIn, dataTag);
@@ -245,6 +239,7 @@ public class EntityDreadLich extends EntityDreadMob implements IAnimatedEntity, 
         return null;
     }
 
+    @Override
     public void setItemStackToSlot(EquipmentSlotType slotIn, ItemStack stack) {
         super.setItemStackToSlot(slotIn, stack);
 
@@ -296,12 +291,13 @@ public class EntityDreadLich extends EntityDreadMob implements IAnimatedEntity, 
         if (fireCooldown == 0 && !flag) {
             this.swingArm(Hand.MAIN_HAND);
             this.playSound(SoundEvents.ENTITY_ZOMBIE_INFECT, this.getSoundVolume(), this.getSoundPitch());
-            EntityDreadLichSkull skull = new EntityDreadLichSkull(IafEntityRegistry.DREAD_LICH_SKULL, world, this, 6);
+            EntityDreadLichSkull skull = new EntityDreadLichSkull(IafEntityRegistry.DREAD_LICH_SKULL.get(), world, this,
+                6);
             double d0 = target.getPosX() - this.getPosX();
-            double d1 = target.getBoundingBox().minY + (double) (target.getHeight() * 2) - skull.getPosY();
+            double d1 = target.getBoundingBox().minY + target.getHeight() * 2 - skull.getPosY();
             double d2 = target.getPosZ() - this.getPosZ();
             double d3 = MathHelper.sqrt(d0 * d0 + d2 * d2);
-            skull.shoot(d0, d1 + d3 * 0.20000000298023224D, d2, 0.0F, (float) (14 - this.world.getDifficulty().getId() * 4));
+            skull.shoot(d0, d1 + d3 * 0.20000000298023224D, d2, 0.0F, 14 - this.world.getDifficulty().getId() * 4);
             this.world.addEntity(skull);
             fireCooldown = 100;
         }
@@ -310,13 +306,13 @@ public class EntityDreadLich extends EntityDreadMob implements IAnimatedEntity, 
     private MobEntity getRandomNewMinion() {
         float chance = rand.nextFloat();
         if (chance > 0.5F) {
-            return new EntityDreadThrall(IafEntityRegistry.DREAD_THRALL, world);
+            return new EntityDreadThrall(IafEntityRegistry.DREAD_THRALL.get(), world);
         } else if (chance > 0.35F) {
-            return new EntityDreadGhoul(IafEntityRegistry.DREAD_GHOUL, world);
+            return new EntityDreadGhoul(IafEntityRegistry.DREAD_GHOUL.get(), world);
         } else if (chance > 0.15F) {
-            return new EntityDreadBeast(IafEntityRegistry.DREAD_BEAST, world);
+            return new EntityDreadBeast(IafEntityRegistry.DREAD_BEAST.get(), world);
         } else {
-            return new EntityDreadScuttler(IafEntityRegistry.DREAD_SCUTTLER, world);
+            return new EntityDreadScuttler(IafEntityRegistry.DREAD_SCUTTLER.get(), world);
         }
     }
 
@@ -334,16 +330,19 @@ public class EntityDreadLich extends EntityDreadMob implements IAnimatedEntity, 
         return entityIn instanceof IDreadMob || super.isOnSameTeam(entityIn);
     }
 
+    @Override
     @Nullable
     protected SoundEvent getAmbientSound() {
         return SoundEvents.ENTITY_STRAY_AMBIENT;
     }
 
+    @Override
     @Nullable
     protected SoundEvent getHurtSound(DamageSource source) {
         return SoundEvents.ENTITY_STRAY_HURT;
     }
 
+    @Override
     @Nullable
     protected SoundEvent getDeathSound() {
         return SoundEvents.ENTITY_STRAY_DEATH;

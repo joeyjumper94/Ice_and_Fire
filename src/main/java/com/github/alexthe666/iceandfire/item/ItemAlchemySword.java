@@ -9,8 +9,8 @@ import com.github.alexthe666.iceandfire.IafConfig;
 import com.github.alexthe666.iceandfire.IceAndFire;
 import com.github.alexthe666.iceandfire.entity.EntityFireDragon;
 import com.github.alexthe666.iceandfire.entity.EntityIceDragon;
-import com.github.alexthe666.iceandfire.entity.props.FrozenEntityProperties;
 
+import com.github.alexthe666.iceandfire.entity.props.FrozenProperties;
 import net.minecraft.client.util.ITooltipFlag;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
@@ -48,10 +48,7 @@ public class ItemAlchemySword extends SwordItem {
             if (target instanceof EntityFireDragon) {
                 target.attackEntityFrom(DamageSource.DROWN, 13.5F);
             }
-            FrozenEntityProperties frozenProps = EntityPropertiesHandler.INSTANCE.getProperties(target, FrozenEntityProperties.class);
-            if(frozenProps != null){
-                frozenProps.setFrozenFor(200);
-            }
+            FrozenProperties.setFrozenFor(target, 200);
             target.addPotionEffect(new EffectInstance(Effects.SLOWNESS, 100, 2));
             target.addPotionEffect(new EffectInstance(Effects.MINING_FATIGUE, 100, 2));
             target.applyKnockback(1F, attacker.getPosX() - target.getPosX(), attacker.getPosZ() - target.getPosZ());
@@ -83,15 +80,18 @@ public class ItemAlchemySword extends SwordItem {
         tooltip.add(new TranslationTextComponent("item.iceandfire.legendary_weapon.desc").mergeStyle(TextFormatting.GRAY));
         if (this == IafItemRegistry.DRAGONBONE_SWORD_FIRE) {
             tooltip.add(new TranslationTextComponent("dragon_sword_fire.hurt1").mergeStyle(TextFormatting.GREEN));
-            tooltip.add(new TranslationTextComponent("dragon_sword_fire.hurt2").mergeStyle(TextFormatting.DARK_RED));
+            if (IafConfig.dragonWeaponFireAbility)
+                tooltip.add(new TranslationTextComponent("dragon_sword_fire.hurt2").mergeStyle(TextFormatting.DARK_RED));
         }
         if (this == IafItemRegistry.DRAGONBONE_SWORD_ICE) {
             tooltip.add(new TranslationTextComponent("dragon_sword_ice.hurt1").mergeStyle(TextFormatting.GREEN));
-            tooltip.add(new TranslationTextComponent("dragon_sword_ice.hurt2").mergeStyle(TextFormatting.AQUA));
+            if (IafConfig.dragonWeaponIceAbility)
+                tooltip.add(new TranslationTextComponent("dragon_sword_ice.hurt2").mergeStyle(TextFormatting.AQUA));
         }
         if (this == IafItemRegistry.DRAGONBONE_SWORD_LIGHTNING) {
             tooltip.add(new TranslationTextComponent("dragon_sword_lightning.hurt1").mergeStyle(TextFormatting.GREEN));
-            tooltip.add(new TranslationTextComponent("dragon_sword_lightning.hurt2").mergeStyle(TextFormatting.DARK_PURPLE));
+            if (IafConfig.dragonWeaponLightningAbility)
+                tooltip.add(new TranslationTextComponent("dragon_sword_lightning.hurt2").mergeStyle(TextFormatting.DARK_PURPLE));
         }
     }
 

@@ -4,12 +4,13 @@ import javax.annotation.Nullable;
 
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.Direction;
+
 import net.minecraftforge.common.capabilities.ICapabilityProvider;
 
 public class TileEntityDragonforgeBrick extends TileEntity {
 
     public TileEntityDragonforgeBrick() {
-        super(IafTileEntityRegistry.DRAGONFORGE_BRICK);
+        super(IafTileEntityRegistry.DRAGONFORGE_BRICK.get());
     }
 
     @Override
@@ -22,7 +23,7 @@ public class TileEntityDragonforgeBrick extends TileEntity {
 
     private ICapabilityProvider getConnectedTileEntity() {
         for (Direction facing : Direction.values()) {
-            if (world.getTileEntity(pos.offset(facing)) != null && world.getTileEntity(pos.offset(facing)) instanceof TileEntityDragonforge) {
+            if (world.getTileEntity(pos.offset(facing)) instanceof TileEntityDragonforge) {
                 return world.getTileEntity(pos.offset(facing));
             }
         }
